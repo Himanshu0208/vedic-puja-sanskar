@@ -1,0 +1,48 @@
+node_modules/
+.next/
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Application data
+data/
+storage/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+bin/
+dist/
+
+test-api.sh
