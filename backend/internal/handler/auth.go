@@ -90,6 +90,19 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response)
 }
 
+// Logout handles user logout (for token-based auth, this is typically a no-op)
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	// In a stateless JWT setup, logout is handled on the client side by deleting the token.
+	// Optionally, you could implement token blacklisting here.
+	
+	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
+}
+
 // Helper functions
 
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
