@@ -46,8 +46,14 @@ func New(cfg config.Config) (*Server, error) {
 	productService := service.NewProductService(productRepo)
 
 	// Create default admin user if it doesn't exist
-	if err := createDefaultAdmin(userRepo, authService); err != nil {
+	if err := createDefaultAccount(userRepo, cfg.Auth.DefaultAdminEmail, cfg.Auth.DefaultAdminPassword, models.RoleAdmin); err != nil {
 		log.Printf("Warning: Failed to create default admin: %v", err)
+	}
+	if err := createDefaultAccount(userRepo, cfg.Auth.DefaultDevAdminEmail, cfg.Auth.DefaultDevAdminPassword, models.RoleAdmin); err != nil {
+		log.Printf("Warning: Failed to create default dev admin: %v", err)
+	}
+	if err := createDefaultAccount(userRepo, cfg.Auth.DefaultDevUserEmail, cfg.Auth.DefaultDevUserPassword, models.RoleUser); err != nil {
+		log.Printf("Warning: Failed to create default dev user: %v", err)
 	}
 
 	// Create server
@@ -139,24 +145,24 @@ func (s *Server) Wait() <-chan error {
 	return errChan
 }
 
-// createDefaultAdmin creates a default admin user if it doesn't exist
-func createDefaultAdmin(userRepo *repository.UserRepository, authService *service.AuthService) error {
-	// Check if admin already exists
-	if userRepo.UserExists("admin@vedic-puja.com") {
+// createDefaultAccount creates a default user account if it doesn't exist
+func createDefaultAccount(userRepo *repository.UserRepository, email string, password string, role models.UserRole) error {
+	// Check if user already exists
+	if userRepo.UserExists(email) {
 		return nil
 	}
 
 	// Create default admin manually with admin role
-	hashedPassword, err := utils.HashPassword("Admin@123")
+	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	adminUser := &models.User{
-		Email:     "admin@vedic-puja.com",
+		Email:     email,
 		Password:  hashedPassword,
-		Role:      models.RoleAdmin,
-		IsAdmin:   true,
+		Role:      role,
+		IsAdmin:   role == models.RoleAdmin,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -167,9 +173,9 @@ func createDefaultAdmin(userRepo *repository.UserRepository, authService *servic
 	}
 
 	log.Println("================================================")
-	log.Println("Default Admin User Created Successfully!")
+	log.Println("Default Account Created Successfully!")
 	log.Println("================================================")
-	log.Println("Email: admin@vedic-puja.com")
+	log.Println("Email: " + email)
 	log.Println("⚠️  Please change this password after first login!")
 	log.Println("================================================")
 
