@@ -107,7 +107,6 @@ func (s *Server) setupRoutes() http.Handler {
 	// Protected routes
 	protectedMux := http.NewServeMux()
 	protectedMux.HandleFunc("/api/v1/auth/profile", authHandler.GetProfile)
-	protectedMux.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
 
 	// Product creation/update/delete (requires auth)
 	protectedMux.HandleFunc("/api/v1/products/create", productHandler.CreateProduct)
