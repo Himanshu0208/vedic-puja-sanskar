@@ -15,10 +15,10 @@ type Config struct {
 
 // AuthConfig holds authentication-related configuration
 type AuthConfig struct {
-	DefaultAdminEmail    string
-	DefaultAdminPassword string
-	DefaultDevUserEmail    string
-	DefaultDevUserPassword string
+	DefaultAdminEmail    	string
+	DefaultAdminPassword 	string
+	DefaultDevUserEmail    	string
+	DefaultDevUserPassword 	string
 	DefaultDevAdminEmail    string
 	DefaultDevAdminPassword string
 }
