@@ -4,23 +4,23 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/handler"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/service"
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/utils"
 )
 
 // AuthMiddleware checks for valid JWT token
 func AuthMiddleware(authService *service.AuthService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token, err := handler.ExtractToken(r)
+			token, err := utils.ExtractToken(r)
 			if err != nil {
-				writeError(w, http.StatusUnauthorized, "unauthorized")
+				utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
 
 			claims, err := authService.VerifyToken(token)
 			if err != nil {
-				writeError(w, http.StatusUnauthorized, "invalid or expired token")
+				utils.WriteError(w, http.StatusUnauthorized, "invalid or expired token")
 				return
 			}
 
@@ -48,7 +48,4 @@ func CORSMiddleware(next http.Handler) http.Handler {
 }
 
 // Helper function
-func writeError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-}
+// response helper moved to pkg/utils

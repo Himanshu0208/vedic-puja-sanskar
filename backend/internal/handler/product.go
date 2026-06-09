@@ -15,6 +15,7 @@ import (
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/service"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/jwt"
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/utils"
 )
 
 // ProductHandler handles product endpoints
@@ -34,64 +35,64 @@ func NewProductHandler(productService *service.ProductService, uploadsDir string
 // GetAllProducts retrieves all products
 func (h *ProductHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
 	response, err := h.productService.GetAllProducts()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response)
+	utils.WriteJSON(w, http.StatusOK, response)
 }
 
 // GetProductByID retrieves a product by ID
 func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		writeError(w, http.StatusBadRequest, "product id is required")
+		utils.WriteError(w, http.StatusBadRequest, "product id is required")
 		return
 	}
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid product id")
+		utils.WriteError(w, http.StatusBadRequest, "invalid product id")
 		return
 	}
 
 	product, err := h.productService.GetProductByID(id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		utils.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, product)
+	utils.WriteJSON(w, http.StatusOK, product)
 }
 
 // CreateProduct creates a new product (admin only)
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
 	// Get user from context
 	claims, ok := r.Context().Value("claims").(*jwt.Claims)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	// Parse multipart form
 	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10 MB max
-		writeError(w, http.StatusBadRequest, "failed to parse form")
+		utils.WriteError(w, http.StatusBadRequest, "failed to parse form")
 		return
 	}
 
@@ -103,18 +104,18 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	// Validate required fields
 	if name == "" || priceStr == "" || salePriceStr == "" {
-		writeError(w, http.StatusBadRequest, "name, price, and sale_price are required")
+		utils.WriteError(w, http.StatusBadRequest, "name, price, and sale_price are required")
 		return
 	}
 
 	// Parse prices
 	var price, salePrice float64
 	if _, err := fmt.Sscanf(priceStr, "%f", &price); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid price format")
+		utils.WriteError(w, http.StatusBadRequest, "invalid price format")
 		return
 	}
 	if _, err := fmt.Sscanf(salePriceStr, "%f", &salePrice); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid sale price format")
+		utils.WriteError(w, http.StatusBadRequest, "invalid sale price format")
 		return
 	}
 
@@ -125,7 +126,7 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		defer file.Close()
 		imagePath, err = h.saveProductImage(file, header)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "failed to upload image: "+err.Error())
+			utils.WriteError(w, http.StatusBadRequest, "failed to upload image: "+err.Error())
 			return
 		}
 	}
@@ -141,42 +142,42 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	// Create product
 	product, err := h.productService.CreateProduct(req, claims.UserID, imagePath)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, product)
+	utils.WriteJSON(w, http.StatusCreated, product)
 }
 
 // UpdateProduct updates a product
 func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
 	// Get user from context
 	claims, ok := r.Context().Value("claims").(*jwt.Claims)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		writeError(w, http.StatusBadRequest, "product id is required")
+		utils.WriteError(w, http.StatusBadRequest, "product id is required")
 		return
 	}
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid product id")
+		utils.WriteError(w, http.StatusBadRequest, "invalid product id")
 		return
 	}
 
 	var req models.UpdateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	defer r.Body.Close()
@@ -184,52 +185,52 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	product, err := h.productService.UpdateProduct(id, &req, claims.UserID)
 	if err != nil {
 		if strings.Contains(err.Error(), "unauthorized") {
-			writeError(w, http.StatusForbidden, err.Error())
+			utils.WriteError(w, http.StatusForbidden, err.Error())
 		} else if strings.Contains(err.Error(), "not found") {
-			writeError(w, http.StatusNotFound, err.Error())
+			utils.WriteError(w, http.StatusNotFound, err.Error())
 		} else {
-			writeError(w, http.StatusBadRequest, err.Error())
+			utils.WriteError(w, http.StatusBadRequest, err.Error())
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusOK, product)
+	utils.WriteJSON(w, http.StatusOK, product)
 }
 
 // DeleteProduct deletes a product
 func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
 	// Get user from context
 	claims, ok := r.Context().Value("claims").(*jwt.Claims)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		writeError(w, http.StatusBadRequest, "product id is required")
+		utils.WriteError(w, http.StatusBadRequest, "product id is required")
 		return
 	}
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid product id")
+		utils.WriteError(w, http.StatusBadRequest, "invalid product id")
 		return
 	}
 
 	err = h.productService.DeleteProduct(id, claims.UserID)
 	if err != nil {
 		if strings.Contains(err.Error(), "unauthorized") {
-			writeError(w, http.StatusForbidden, err.Error())
+			utils.WriteError(w, http.StatusForbidden, err.Error())
 		} else if strings.Contains(err.Error(), "not found") {
-			writeError(w, http.StatusNotFound, err.Error())
+			utils.WriteError(w, http.StatusNotFound, err.Error())
 		} else {
-			writeError(w, http.StatusBadRequest, err.Error())
+			utils.WriteError(w, http.StatusBadRequest, err.Error())
 		}
 		return
 	}
