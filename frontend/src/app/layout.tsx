@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ReduxProvider } from "@/components/ReduxProvider";
 import { ToastProvider } from "@/components/ToastProvider";
+import Header from "@/components/Header";
+import AdminSideBar from "@/components/admin/AdminSideBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,6 +26,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html
       lang="en"
@@ -33,7 +36,13 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-white">
         <ToastProvider />
         <ReduxProvider>
-          {children}
+          <Header />
+          <div className="flex">
+            <AdminSideBar />
+            <main className="flex-1">
+              {children}
+            </main>
+          </div>
         </ReduxProvider>
       </body>
     </html>

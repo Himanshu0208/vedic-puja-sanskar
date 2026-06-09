@@ -25,7 +25,7 @@ export interface AuthState {
 }
 
 const initialState: AuthState = {
-  user: null,
+  user: typeof window !== 'undefined' && localStorage.getItem('userData') ? JSON.parse(localStorage.getItem('userData') as string) : null,
   token: typeof window !== 'undefined' ? localStorage.getItem('authToken') : null,
   isLoading: false,
   isAuthenticated: typeof window !== 'undefined' ? !!localStorage.getItem('authToken') : false,
