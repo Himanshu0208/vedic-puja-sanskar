@@ -2,40 +2,69 @@ package models
 
 import "time"
 
-// Product represents a product in the system
 type Product struct {
-	ID          int       `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Price       float64   `json:"price"`
-	SalePrice   float64   `json:"sale_price"`
-	ImageURL    string    `json:"image_url"`
-	ImagePath   string    `json:"image_path"`
-	Category    string    `json:"category"`
-	Stock       int       `json:"stock"`
-	CreatedBy   int       `json:"created_by"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID           int       `json:"id"`
+	Name         string    `json:"name"`
+	Description  string    `json:"description"`
+	Benefits     string    `json:"benefits"`
+	Price        float64   `json:"price"`
+	SellingPrice float64   `json:"selling_price"`
+	OfferPrice   float64   `json:"offer_price"`
+	ImageURL     string    `json:"image_url"`
+	ImagePath    string    `json:"image_path"`
+	CategoryID   int       `json:"category_id"`
+	Quantity     int       `json:"quantity"`
+	CreatedBy    int       `json:"created_by"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// CreateProductRequest represents a product creation request
 type CreateProductRequest struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	SalePrice   float64 `json:"sale_price"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Benefits     string  `json:"benefits"`
+	Price        float64 `json:"price"`
+	SellingPrice float64 `json:"selling_price"`
+	OfferPrice   float64 `json:"offer_price"`
+	ImageURL     string  `json:"image_url"`
+	ImagePath    string  `json:"image_path"`
+	CategoryID   int     `json:"category_id"`
+	Quantity     int     `json:"quantity"`
 }
 
-// UpdateProductRequest represents a product update request
 type UpdateProductRequest struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	SalePrice   float64 `json:"sale_price"`
+	ID           int     `json:"id"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Benefits     string  `json:"benefits"`
+	Price        float64 `json:"price"`
+	SellingPrice float64 `json:"selling_price"`
+	OfferPrice   float64 `json:"offer_price"`
+	ImageURL     string  `json:"image_url"`
+	ImagePath    string  `json:"image_path"`
+	CategoryID   int     `json:"category_id"`
+	Quantity     int     `json:"quantity"`
 }
 
-// ProductListResponse represents a list of products
 type ProductListResponse struct {
 	Products []*Product `json:"products"`
 	Total    int        `json:"total"`
+}
+
+type ProductWithCategory struct {
+	ID           int       `json:"id"`
+	Name         string    `json:"name"`
+	Description  string    `json:"description"`
+	Benefits     string    `json:"benefits"`
+	Price        float64   `json:"price"`
+	SellingPrice float64   `json:"selling_price"`
+	OfferPrice   float64   `json:"offer_price"`
+	ImageURL     string    `json:"image_url"`
+	ImagePath    string    `json:"image_path"`
+	CategoryID   int       `json:"category_id"`
+	CategoryName string    `json:"category_name"`
+	Quantity     int       `json:"quantity"`
+	CreatedBy    int       `json:"created_by"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }

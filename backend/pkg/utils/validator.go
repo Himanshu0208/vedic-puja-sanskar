@@ -1,41 +1,46 @@
 package utils
 
 import (
-	"errors"
-	"regexp"
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
+
+	"github.com/go-playground/validator/v10"
 )
 
-const (
-	minPasswordLength = 6
-	maxPasswordLength = 100
-)
+func ValidateImageFields(sl validator.StructLevel) {
+	req := sl.Current().Interface().(dto.UpdateProductRequest)
 
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	hasImage := req.Image != nil
+	hasImagePath := req.ImagePath != nil && *req.ImagePath != ""
+	hasImageURL := req.ImageURL != nil && *req.ImageURL != ""
 
-// ValidateEmail validates an email address
-func ValidateEmail(email string) error {
-	if email == "" {
-		return errors.New("email is required")
+	if !hasImage && !(hasImagePath && hasImageURL) {
+		sl.ReportError(req.Image, "Image", "image", "imageOrPathUrl", "")
 	}
-	if len(email) > 255 {
-		return errors.New("email is too long")
-	}
-	if !emailRegex.MatchString(email) {
-		return errors.New("invalid email format")
-	}
-	return nil
 }
 
-// ValidatePassword validates a password
-func ValidatePassword(password string) error {
-	if password == "" {
-		return errors.New("password is required")
+func ValidateStrongPassword(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
+
+	var (
+		hasMinLen  = len(password) >= 8
+		hasUpper   = false
+		hasLower   = false
+		hasNumber  = false
+		hasSpecial = false
+	)
+
+	for _, ch := range password {
+		switch {
+		case 'A' <= ch && ch <= 'Z':
+			hasUpper = true
+		case 'a' <= ch && ch <= 'z':
+			hasLower = true
+		case '0' <= ch && ch <= '9':
+			hasNumber = true
+		default:
+			hasSpecial = true
+		}
 	}
-	if len(password) < minPasswordLength {
-		return errors.New("password must be at least 6 characters long")
-	}
-	if len(password) > maxPasswordLength {
-		return errors.New("password is too long")
-	}
-	return nil
+
+	return hasMinLen && hasUpper && hasLower && hasNumber && hasSpecial
 }

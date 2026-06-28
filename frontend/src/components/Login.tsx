@@ -118,7 +118,7 @@ export default function Login({ onClose, onSwitchToSignup }: LoginProps) {
 
         <div className="mt-4 text-center">
           <p className="text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <button
               onClick={onSwitchToSignup}
               className="text-amber-600 font-semibold hover:underline"

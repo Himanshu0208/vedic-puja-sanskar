@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 
 export default function Footer() {
   return (
@@ -14,17 +15,17 @@ export default function Footer() {
           <div>
             <h4 className="font-bold text-amber-900 mb-3 sm:mb-4 text-base sm:text-lg">Quick Links</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="text-amber-700 hover:text-amber-900 transition-colors">Shop</a></li>
-              <li><a href="#" className="text-amber-700 hover:text-amber-900 transition-colors">About</a></li>
-              <li><a href="#" className="text-amber-700 hover:text-amber-900 transition-colors">Contact</a></li>
+              <li><Link href="/shop" className="text-amber-700 hover:text-amber-900 transition-colors">Shop</Link></li>
+              <li><Link href="/about" className="text-amber-700 hover:text-amber-900 transition-colors">About</Link></li>
+              <li><Link href="/contact" className="text-amber-700 hover:text-amber-900 transition-colors">Contact</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="font-bold text-amber-900 mb-3 sm:mb-4 text-base sm:text-lg">Support</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="text-amber-700 hover:text-amber-900 transition-colors">FAQ</a></li>
-              <li><a href="#" className="text-amber-700 hover:text-amber-900 transition-colors">Shipping</a></li>
-              <li><a href="#" className="text-amber-700 hover:text-amber-900 transition-colors">Returns</a></li>
+              <li><Link href="/faq" className="text-amber-700 hover:text-amber-900 transition-colors">FAQ</Link></li>
+              <li><Link href="/shipping" className="text-amber-700 hover:text-amber-900 transition-colors">Shipping</Link></li>
+              <li><Link href="/returns" className="text-amber-700 hover:text-amber-900 transition-colors">Returns</Link></li>
             </ul>
           </div>
           <div>

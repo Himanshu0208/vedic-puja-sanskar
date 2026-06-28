@@ -8,6 +8,7 @@ import (
 
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/db"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/config"
+	// "github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/handler"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/middleware"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
@@ -15,61 +16,62 @@ import (
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/service"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/jwt"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/utils"
+	"github.com/go-playground/validator/v10"
 )
 
-// Server represents the HTTP server
 type Server struct {
-	config         config.Config
-	httpServer     *http.Server
-	authService    *service.AuthService
-	productService *service.ProductService
-	dbConn         *db.Connection
+	config          config.Config
+	httpServer      *http.Server
+	authService     *service.AuthService
+	productService  *service.ProductService
+	categoryService *service.CategoryService
+	dbConn          *db.Connection
+	validate        *validator.Validate // ✅ central validator
 }
 
-// New creates a new server instance
 func New(cfg config.Config) (*Server, error) {
-	// Initialize PostgreSQL database connection
+
+	// DB
 	dbConn, err := db.NewConnection(cfg.Database.URL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize database: %w", err)
+		return nil, fmt.Errorf("failed to init db: %w", err)
 	}
 
-	// Initialize repositories
+	// Repositories
 	userRepo := repository.NewUserRepository(dbConn.DB)
 	productRepo := repository.NewProductRepository(dbConn.DB)
+	categoryRepo := repository.NewCategoryRepository(dbConn.DB)
 
-	// Initialize JWT token manager
+	// JWT
 	tokenManager := jwt.NewTokenManager(cfg.JWT.Secret)
 
-	// Initialize services
+	// Services
 	authService := service.NewAuthService(userRepo, tokenManager, cfg.JWT.ExpirationHours)
-	productService := service.NewProductService(productRepo)
+	productService := service.NewProductService(productRepo, categoryRepo)
+	categoryService := service.NewCategoryService(categoryRepo)
 
-	// Create default admin user if it doesn't exist
-	if err := createDefaultAccount(userRepo, cfg.Auth.DefaultAdminEmail, cfg.Auth.DefaultAdminPassword, models.RoleAdmin); err != nil {
-		log.Printf("Warning: Failed to create default admin: %v", err)
-	}
-	if err := createDefaultAccount(userRepo, cfg.Auth.DefaultDevAdminEmail, cfg.Auth.DefaultDevAdminPassword, models.RoleAdmin); err != nil {
-		log.Printf("Warning: Failed to create default dev admin: %v", err)
-	}
-	if err := createDefaultAccount(userRepo, cfg.Auth.DefaultDevUserEmail, cfg.Auth.DefaultDevUserPassword, models.RoleUser); err != nil {
-		log.Printf("Warning: Failed to create default dev user: %v", err)
-	}
+	// ✅ Validator (single instance)
+	validate := validator.New()
+	validate.RegisterValidation("strong_password", utils.ValidateStrongPassword)
+	// validate.RegisterStructValidation(utils.ValidateImageFields, dto.UpdateProductRequest{})
 
-	// Create server
+	// Default users
+	createDefaultAccount(userRepo, cfg.Auth.DefaultAdminEmail, cfg.Auth.DefaultAdminPassword, models.RoleAdmin)
+	createDefaultAccount(userRepo, cfg.Auth.DefaultDevAdminEmail, cfg.Auth.DefaultDevAdminPassword, models.RoleAdmin)
+	createDefaultAccount(userRepo, cfg.Auth.DefaultDevUserEmail, cfg.Auth.DefaultDevUserPassword, models.RoleUser)
+
 	server := &Server{
-		config:         cfg,
-		authService:    authService,
-		productService: productService,
-		dbConn:         dbConn,
+		config:          cfg,
+		authService:     authService,
+		productService:  productService,
+		categoryService: categoryService,
+		dbConn:          dbConn,
+		validate:        validate,
 	}
-
-	// Setup routes
-	mux := server.setupRoutes()
 
 	server.httpServer = &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
-		Handler:      mux,
+		Handler:      server.setupRoutes(),
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
@@ -77,88 +79,88 @@ func New(cfg config.Config) (*Server, error) {
 	return server, nil
 }
 
-// setupRoutes configures all HTTP routes
 func (s *Server) setupRoutes() http.Handler {
+
 	mux := http.NewServeMux()
 
-	// Create handlers
-	authHandler := handler.NewAuthHandler(s.authService)
-	uploadsDir := s.config.Database.StoragePath + "/uploads"
-	productHandler := handler.NewProductHandler(s.productService, uploadsDir)
+	// Handlers (DI)
+	authHandler := handler.NewAuthHandler(s.authService, s.validate)
+	uploadsDir := s.config.Database.ImageStoragePath
+	productHandler := handler.NewProductHandler(s.productService, uploadsDir, s.validate)
+	categoryHandler := handler.NewCategoryHandler(s.categoryService, s.validate)
 
-	// Public routes
+	// ---------------- PUBLIC ROUTES ----------------
+
 	mux.HandleFunc("/api/v1/auth/signup", authHandler.Signup)
 	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
 
-	// Product routes (public - readable)
 	mux.HandleFunc("/api/v1/products", productHandler.GetAllProducts)
 	mux.HandleFunc("/api/v1/products/get", productHandler.GetProductByID)
+	mux.HandleFunc("/api/v1/categories", categoryHandler.GetAllCategories)
 
-	// Serve uploaded images
-	mux.HandleFunc("/uploads/", handler.ServeImage(uploadsDir))
+	mux.HandleFunc("/uploads/", utils.ServeImage(uploadsDir))
 
-	// Health check
 	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"status":"ok"}`)
+		fmt.Fprint(w, `{"status":"ok"}`)
 	})
 
-	// Protected routes
+	// ---------------- PROTECTED ROUTES ----------------
+
 	protectedMux := http.NewServeMux()
+
 	protectedMux.HandleFunc("/api/v1/auth/profile", authHandler.GetProfile)
 
-	// Product creation/update/delete (requires auth)
+	// product protected actions
 	protectedMux.HandleFunc("/api/v1/products/create", productHandler.CreateProduct)
 	protectedMux.HandleFunc("/api/v1/products/update", productHandler.UpdateProduct)
 	protectedMux.HandleFunc("/api/v1/products/delete", productHandler.DeleteProduct)
 
-	// Wrap protected routes with auth middleware
+	// wrap with auth middleware
 	protectedHandler := middleware.AuthMiddleware(s.authService)(protectedMux)
+
 	mux.Handle("/api/v1/", protectedHandler)
 
-	// Apply CORS middleware to all routes
-	handler := middleware.CORSMiddleware(mux)
-
-	return handler
+	// CORS
+	return middleware.CORSMiddleware(mux)
 }
 
-// Start starts the HTTP server
+// ---------------- SERVER CONTROL ----------------
+
 func (s *Server) Start() error {
-	log.Printf("Starting server on %s:%s", s.config.Server.Host, s.config.Server.Port)
+	log.Printf("Server running on %s:%s", s.config.Server.Host, s.config.Server.Port)
 	return s.httpServer.ListenAndServe()
 }
 
-// Stop gracefully stops the server
 func (s *Server) Stop() error {
 	log.Println("Stopping server...")
 	return s.httpServer.Close()
 }
 
-// Wait blocks until the server is ready
 func (s *Server) Wait() <-chan error {
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- s.Start()
 	}()
-	time.Sleep(100 * time.Millisecond) // Give server time to start
+	time.Sleep(100 * time.Millisecond)
 	return errChan
 }
 
-// createDefaultAccount creates a default user account if it doesn't exist
-func createDefaultAccount(userRepo *repository.UserRepository, email string, password string, role models.UserRole) error {
-	// Check if user already exists
+// ---------------- DEFAULT USER ----------------
+
+func createDefaultAccount(userRepo *repository.UserRepository, email, password string, role models.UserRole) {
+
 	if userRepo.UserExists(email) {
-		return nil
+		return
 	}
 
-	// Create default admin manually with admin role
 	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		log.Println("hash error:", err)
+		return
 	}
 
-	adminUser := &models.User{
+	user := &models.User{
 		Email:     email,
 		Password:  hashedPassword,
 		Role:      role,
@@ -167,17 +169,10 @@ func createDefaultAccount(userRepo *repository.UserRepository, email string, pas
 		UpdatedAt: time.Now(),
 	}
 
-	_, err = userRepo.SaveUser(adminUser)
-	if err != nil {
-		return fmt.Errorf("failed to save admin user: %w", err)
+	if _, err := userRepo.SaveUser(user); err != nil {
+		log.Println("save error:", err)
+		return
 	}
 
-	log.Println("================================================")
-	log.Println("Default Account Created Successfully!")
-	log.Println("================================================")
-	log.Println("Email: " + email)
-	log.Println("⚠️  Please change this password after first login!")
-	log.Println("================================================")
-
-	return nil
+	log.Println("Default user created:", email)
 }

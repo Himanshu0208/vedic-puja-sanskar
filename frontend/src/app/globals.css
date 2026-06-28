@@ -27,3 +27,26 @@ html {
   color-scheme: light !important;
 }
 
+/* Hide scrollbars */
+html,
+body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer and Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+/* Hide scrollbars for all elements */
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Allow scrolling functionality while hiding scrollbar */
+html,
+body {
+  overflow: auto;
+}
+

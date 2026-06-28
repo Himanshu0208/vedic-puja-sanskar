@@ -1,34 +1,35 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/service"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/jwt"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/utils"
+
+	"github.com/go-playground/form/v4"
+	"github.com/go-playground/validator/v10"
 )
 
 // ProductHandler handles product endpoints
 type ProductHandler struct {
 	productService *service.ProductService
 	uploadsDir     string
+	validate       *validator.Validate
+	formDecoder    *form.Decoder
 }
 
 // NewProductHandler creates a new product handler
-func NewProductHandler(productService *service.ProductService, uploadsDir string) *ProductHandler {
+func NewProductHandler(productService *service.ProductService, uploadsDir string, validate *validator.Validate) *ProductHandler {
+	formDecoder := form.NewDecoder()
 	return &ProductHandler{
 		productService: productService,
 		uploadsDir:     uploadsDir,
+		validate:       validate,
+		formDecoder:    formDecoder,
 	}
 }
 
@@ -83,63 +84,44 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user from context
 	claims, ok := r.Context().Value("claims").(*jwt.Claims)
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	// Parse multipart form
-	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10 MB max
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "failed to parse form")
 		return
 	}
 
-	// Get form values
-	name := r.FormValue("name")
-	description := r.FormValue("description")
-	priceStr := r.FormValue("price")
-	salePriceStr := r.FormValue("sale_price")
-
-	// Validate required fields
-	if name == "" || priceStr == "" || salePriceStr == "" {
-		utils.WriteError(w, http.StatusBadRequest, "name, price, and sale_price are required")
-		return
-	}
-
-	// Parse prices
-	var price, salePrice float64
-	if _, err := fmt.Sscanf(priceStr, "%f", &price); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "invalid price format")
-		return
-	}
-	if _, err := fmt.Sscanf(salePriceStr, "%f", &salePrice); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "invalid sale price format")
-		return
-	}
-
-	// Handle file upload
 	var imagePath string
 	file, header, err := r.FormFile("image")
 	if err == nil {
 		defer file.Close()
-		imagePath, err = h.saveProductImage(file, header)
+		imagePath, err = utils.SaveProductImage(file, header, h.uploadsDir)
 		if err != nil {
 			utils.WriteError(w, http.StatusBadRequest, "failed to upload image: "+err.Error())
 			return
 		}
+	} else {
+		utils.WriteError(w, http.StatusBadRequest, "image is required")
+		return
 	}
 
-	// Create product request
-	req := &models.CreateProductRequest{
-		Name:        name,
-		Description: description,
-		Price:       price,
-		SalePrice:   salePrice,
+	req := &dto.ProductRequest{}
+
+	if err := h.formDecoder.Decode(&req, r.PostForm); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "failed to decode form data: "+err.Error())
+		return
 	}
 
-	// Create product
+	req.Image = header
+	if err := h.validate.Struct(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	product, err := h.productService.CreateProduct(req, claims.UserID, imagePath)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err.Error())
@@ -156,33 +138,50 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user from context
 	claims, ok := r.Context().Value("claims").(*jwt.Claims)
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	idStr := r.URL.Query().Get("id")
-	if idStr == "" {
-		utils.WriteError(w, http.StatusBadRequest, "product id is required")
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		// fallback to regular form if not multipart
+		if err := r.ParseForm(); err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "failed to parse form")
+			return
+		}
+	}
+
+	req := &dto.UpdateProductRequest{}
+
+	if err := h.formDecoder.Decode(&req, r.PostForm); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "failed to decode form data: "+err.Error())
 		return
 	}
 
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "invalid product id")
+	if err := h.validate.Struct(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	var req models.UpdateProductRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
+	var imagePath string
+	file, header, err := r.FormFile("image")
+	if err == nil {
+		defer file.Close()
+		imagePath, err = utils.SaveProductImage(file, header, h.uploadsDir)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "failed to upload image: "+err.Error())
+			return
+		}
+	} else if req.ImagePath != nil && req.ImageURL != nil {
+		imagePath = *req.ImagePath
+	} else {
+		utils.WriteError(w, http.StatusBadRequest, "image is required")
 		return
 	}
-	defer r.Body.Close()
 
-	product, err := h.productService.UpdateProduct(id, &req, claims.UserID)
+
+	product, err := h.productService.UpdateProduct(req.ID, req, claims.UserID, imagePath)
 	if err != nil {
 		if strings.Contains(err.Error(), "unauthorized") {
 			utils.WriteError(w, http.StatusForbidden, err.Error())
@@ -204,7 +203,6 @@ func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user from context
 	claims, ok := r.Context().Value("claims").(*jwt.Claims)
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
@@ -223,7 +221,7 @@ func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.productService.DeleteProduct(id, claims.UserID)
+	deletedProduct, err := h.productService.DeleteProduct(id, claims.UserID)
 	if err != nil {
 		if strings.Contains(err.Error(), "unauthorized") {
 			utils.WriteError(w, http.StatusForbidden, err.Error())
@@ -235,57 +233,5 @@ func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"message":"product deleted successfully"}`)
-}
-
-// saveProductImage saves uploaded image and returns the path
-func (h *ProductHandler) saveProductImage(file multipart.File, header *multipart.FileHeader) (string, error) {
-	// Validate file extension
-	ext := filepath.Ext(header.Filename)
-	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
-	if !allowedExts[strings.ToLower(ext)] {
-		return "", fmt.Errorf("invalid file type, allowed: jpg, jpeg, png, gif, webp")
-	}
-
-	// Create unique filename
-	filename := fmt.Sprintf("product_%d%s", time.Now().UnixNano(), ext)
-	filepath := filepath.Join(h.uploadsDir, filename)
-
-	// Create file
-	dst, err := os.Create(filepath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create file: %w", err)
-	}
-	defer dst.Close()
-
-	// Copy file content
-	if _, err := io.Copy(dst, file); err != nil {
-		return "", fmt.Errorf("failed to save file: %w", err)
-	}
-
-	// Return relative path for API
-	return "/uploads/" + filename, nil
-}
-
-// ServeImage serves product images
-func ServeImage(uploadsDir string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		filename := strings.TrimPrefix(r.URL.Path, "/uploads/")
-		filepath := filepath.Join(uploadsDir, filename)
-
-		// Prevent directory traversal
-		if !strings.HasPrefix(filepath, uploadsDir) {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		http.ServeFile(w, r, filepath)
-	}
+	utils.WriteJSON(w, http.StatusOK, deletedProduct)
 }

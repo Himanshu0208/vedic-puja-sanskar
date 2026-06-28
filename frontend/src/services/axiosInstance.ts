@@ -27,7 +27,6 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear auth data if unauthorized
       if (typeof window !== 'undefined') {
         localStorage.removeItem('authToken');
         localStorage.removeItem('userData');
@@ -45,4 +44,17 @@ function getAuthToken(): string | null {
   return null;
 }
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+    if (axios.isAxiosError<{ error?: string }>(error)) {
+        return error.response?.data?.error || error.message || fallback;
+    }
+
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    return fallback;
+};
+
+export { getErrorMessage };
 export default axiosInstance;

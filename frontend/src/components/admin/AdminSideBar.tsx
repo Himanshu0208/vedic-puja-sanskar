@@ -2,13 +2,15 @@
 
 import { useSelector, useDispatch } from 'react-redux';
 import { useEffect } from 'react';
-import { logout } from '@/store/slices/authSlice';
-import { toggleSidebar, setIsMobile, setSidebarOpen } from '@/store/slices/sidebarSlice';
-import { RootState, AppDispatch } from '@/store';
+import Link from 'next/link';
 import { 
   LucideArrowRightFromLine, 
   LucideArrowLeftFromLine,
   LucideLogOut } from 'lucide-react';
+
+import { logout } from '@/store/slices/authSlice';
+import { toggleSidebar, setIsMobile, setSidebarOpen } from '@/store/slices/sidebarSlice';
+import { RootState, AppDispatch } from '@/store';
 import { adminNavItems } from '@/constants/navItems';
 
 export default function AdminSideBar() {
@@ -16,10 +18,6 @@ export default function AdminSideBar() {
   const { isOpen, isMobile } = useSelector((state: RootState) => state.sidebar);
   const dispatch = useDispatch<AppDispatch>();
   
-  if(!isAuthenticated || user?.role !== 'admin') {
-    return null;
-  }
-
   // Set screen size on mount and resize
   useEffect(() => {
     const handleResize = () => {
@@ -30,7 +28,12 @@ export default function AdminSideBar() {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [dispatch]);
+  
+  if(!isAuthenticated || user?.role !== 'admin') {
+    return null;
+  }
+
 
   return (
     <>
@@ -73,12 +76,12 @@ export default function AdminSideBar() {
               const IconComponent = item.icon;
               return (
                 <li key={item.label}>
-                  <a href={item.link} className="flex items-center gap-3 text-amber-900 px-3 py-3 rounded-lg hover:bg-white transition-all whitespace-nowrap">
+                  <Link href={item.link} className="flex items-center gap-3 text-amber-900 px-3 py-3 rounded-lg hover:bg-white transition-all whitespace-nowrap">
                     <IconComponent size={24} className="shrink-0" />
                     <span className={`${isOpen ? 'opacity-100' : 'opacity-0 hidden'} transition-opacity duration-300`}>
                       {item.label}
                     </span>
-                  </a>
+                  </Link>
                 </li>
               );
             })}

@@ -39,3 +39,12 @@ lint:
 clean:
 	rm -rf bin/
 	rm -rf data/
+
+migrate-up:
+	migrate -path db/migrations -database $(DATABASE_URL) up
+
+migrate-down:
+	migrate -path db/migrations -database $(DATABASE_URL) down
+
+migrate-force:
+	migrate -path db/migrations -database $(DATABASE_URL) force $(VERSION)

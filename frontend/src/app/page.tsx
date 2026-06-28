@@ -1,14 +1,5 @@
 
 export default function Home() {
-  
-
-  // Redux selectors
-  
-  
-
-  
-
-  
   return (
   <>
     {/* Hero Section */}

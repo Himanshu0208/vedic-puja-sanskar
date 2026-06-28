@@ -21,28 +21,6 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// SignupRequest represents a user signup request
-type SignupRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-// LoginRequest represents a user login request
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-// AuthResponse represents a successful authentication response
-type AuthResponse struct {
-	ID          int      `json:"id"`
-	Email       string   `json:"email"`
-	Role        UserRole `json:"role"`
-	AccessToken string   `json:"access_token"`
-	TokenType   string   `json:"token_type"`
-	ExpiresIn   int      `json:"expires_in"`
-}
-
 // ErrorResponse represents an error response
 type ErrorResponse struct {
 	Error   string `json:"error"`

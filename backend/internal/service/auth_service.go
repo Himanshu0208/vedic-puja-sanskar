@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/repository"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/jwt"
@@ -28,52 +29,38 @@ func NewAuthService(userRepo *repository.UserRepository, tokenManager *jwt.Token
 }
 
 // Signup registers a new user
-func (s *AuthService) Signup(req *models.SignupRequest) (*models.AuthResponse, error) {
-	// Validate input
-	if err := utils.ValidateEmail(req.Email); err != nil {
-		return nil, fmt.Errorf("email validation failed: %w", err)
-	}
-
-	if err := utils.ValidatePassword(req.Password); err != nil {
-		return nil, fmt.Errorf("password validation failed: %w", err)
-	}
-
-	// Check if user already exists
+func (s *AuthService) Signup(req *dto.SignupRequest) (*dto.AuthResponse, error) {
 	if s.userRepo.UserExists(req.Email) {
 		return nil, errors.New("user with this email already exists")
 	}
 
-	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// Create user
 	user := &models.User{
 		Email:     req.Email,
 		Password:  hashedPassword,
-		Role:      models.RoleUser, // Default role
+		Role:      models.RoleUser,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	// Save user
 	savedUser, err := s.userRepo.SaveUser(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save user: %w", err)
 	}
 
-	// Generate token
 	token, err := s.tokenManager.GenerateToken(savedUser.ID, savedUser.Email, s.tokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	return &models.AuthResponse{
+	return &dto.AuthResponse{
 		ID:          savedUser.ID,
 		Email:       savedUser.Email,
-		Role:        savedUser.Role,
+		Role:        string(savedUser.Role),
 		AccessToken: token,
 		TokenType:   "Bearer",
 		ExpiresIn:   s.tokenExpiry * 3600, // Convert hours to seconds
@@ -81,16 +68,7 @@ func (s *AuthService) Signup(req *models.SignupRequest) (*models.AuthResponse, e
 }
 
 // Login authenticates a user
-func (s *AuthService) Login(req *models.LoginRequest) (*models.AuthResponse, error) {
-	// Validate input
-	if err := utils.ValidateEmail(req.Email); err != nil {
-		return nil, fmt.Errorf("email validation failed: %w", err)
-	}
-
-	if req.Password == "" {
-		return nil, errors.New("password is required")
-	}
-
+func (s *AuthService) Login(req *dto.LoginRequest) (*dto.AuthResponse, error) {
 	// Get user by email
 	user, err := s.userRepo.GetUserByEmail(req.Email)
 	if err != nil {
@@ -102,23 +80,21 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.AuthResponse, err
 		return nil, errors.New("invalid credentials")
 	}
 
-	// Generate token
 	token, err := s.tokenManager.GenerateToken(user.ID, user.Email, s.tokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	return &models.AuthResponse{
+	return &dto.AuthResponse{
 		ID:          user.ID,
 		Email:       user.Email,
-		Role:        user.Role,
+		Role:        string(user.Role),
 		AccessToken: token,
 		TokenType:   "Bearer",
 		ExpiresIn:   s.tokenExpiry * 3600, // Convert hours to seconds
 	}, nil
 }
 
-// VerifyToken verifies a JWT token and returns the claims
 func (s *AuthService) VerifyToken(tokenString string) (*jwt.Claims, error) {
 	return s.tokenManager.ValidateToken(tokenString)
 }
