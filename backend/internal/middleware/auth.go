@@ -14,7 +14,7 @@ func AuthMiddleware(authService *service.AuthService) func(http.Handler) http.Ha
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, err := utils.ExtractToken(r)
 			if err != nil {
-				utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
+				utils.WriteError(w, http.StatusUnauthorized, "unauthorized from middleware")
 				return
 			}
 

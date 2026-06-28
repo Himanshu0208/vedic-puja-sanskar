@@ -15,13 +15,14 @@ type Config struct {
 
 // AuthConfig holds authentication-related configuration
 type AuthConfig struct {
-	DefaultAdminEmail    	string
-	DefaultAdminPassword 	string
-	DefaultDevUserEmail    	string
-	DefaultDevUserPassword 	string
+	DefaultAdminEmail       string
+	DefaultAdminPassword    string
+	DefaultDevUserEmail     string
+	DefaultDevUserPassword  string
 	DefaultDevAdminEmail    string
 	DefaultDevAdminPassword string
 }
+
 // ServerConfig holds server-related configuration
 type ServerConfig struct {
 	Port         string
@@ -39,8 +40,8 @@ type JWTConfig struct {
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	URL         string
-	StoragePath string // kept for backward compatibility
+	URL              string
+	ImageStoragePath string // kept for backward compatibility
 }
 
 // Load loads configuration from environment variables and defaults
@@ -58,16 +59,16 @@ func Load() Config {
 			RefreshExpiryDays: 7,
 		},
 		Database: DatabaseConfig{
-			URL:         getEnv("POSTGRES_DATABASE_URL", ""),
-			StoragePath: getEnv("STORAGE_PATH", "./data"),
+			URL:              getEnv("POSTGRES_DATABASE_URL", ""),
+			ImageStoragePath: getEnv("IMAGE_STORAGE_PATH", "./uploads"),
 		},
 		Auth: AuthConfig{
-			DefaultAdminEmail:          getEnv("DEFAULT_ADMIN_EMAIL", "admin@vedic-puja.com"),
-			DefaultAdminPassword:		getEnv("DEFAULT_ADMIN_PASSWORD", "Admin@123"),
-			DefaultDevAdminEmail:    	getEnv("DEFAULT_DEV_ADMIN_EMAIL", "dev-admin@vedic-puja.com"),
-			DefaultDevAdminPassword: 	getEnv("DEFAULT_DEV_ADMIN_PASSWORD", "Dev@123"),
-			DefaultDevUserEmail:    	getEnv("DEFAULT_DEV_USER_EMAIL", "dev-user@vedic-puja.com"),
-			DefaultDevUserPassword: 	getEnv("DEFAULT_DEV_USER_PASSWORD", "Dev@123"),
+			DefaultAdminEmail:       getEnv("DEFAULT_ADMIN_EMAIL", "admin@vedic-puja.com"),
+			DefaultAdminPassword:    getEnv("DEFAULT_ADMIN_PASSWORD", "Admin@123"),
+			DefaultDevAdminEmail:    getEnv("DEFAULT_DEV_ADMIN_EMAIL", "dev-admin@vedic-puja.com"),
+			DefaultDevAdminPassword: getEnv("DEFAULT_DEV_ADMIN_PASSWORD", "Dev@123"),
+			DefaultDevUserEmail:     getEnv("DEFAULT_DEV_USER_EMAIL", "dev-user@vedic-puja.com"),
+			DefaultDevUserPassword:  getEnv("DEFAULT_DEV_USER_PASSWORD", "Dev@123"),
 		},
 	}
 }

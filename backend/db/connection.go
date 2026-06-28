@@ -4,83 +4,76 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 )
 
-// Connection manages PostgreSQL connection
 type Connection struct {
 	DB *sql.DB
 }
 
-// NewConnection creates a new database connection and initializes schema
 func NewConnection(databaseURL string) (*Connection, error) {
 	if databaseURL == "" {
 		return nil, fmt.Errorf("database URL is required")
 	}
 
-	// Open database connection
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Test the connection
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Set connection pool settings
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	conn := &Connection{DB: db}
 
-	// Initialize database schema
-	if err := conn.initializeSchema(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+	if err := conn.runMigrations(db); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	log.Println("Successfully connected to PostgreSQL database")
 	return conn, nil
 }
 
-// initializeSchema creates the necessary tables if they don't exist
-func (c *Connection) initializeSchema() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS users (
-		id SERIAL PRIMARY KEY,
-		email VARCHAR(255) UNIQUE NOT NULL,
-		password VARCHAR(255) NOT NULL,
-		is_admin BOOLEAN DEFAULT false,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
+func (c *Connection) runMigrations(db *sql.DB) error {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return fmt.Errorf("failed to create migration driver: %w", err)
+	}
 
-	CREATE TABLE IF NOT EXISTS products (
-		id SERIAL PRIMARY KEY,
-		name VARCHAR(255) NOT NULL,
-		description TEXT,
-		category VARCHAR(100),
-		price DECIMAL(10, 2) NOT NULL,
-		image_url VARCHAR(500),
-		stock INT DEFAULT 0,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
+	migrationsPath := os.Getenv("MIGRATIONS_PATH")
+	m, err := migrate.NewWithDatabaseInstance(
+		migrationsPath, // path to your migration files
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create migrate instance: %w", err)
+	}
 
-	CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-	CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-	`
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
 
-	_, err := c.DB.Exec(schema)
-	return err
+	if err == migrate.ErrNoChange {
+		log.Println("No new migrations to run")
+	} else {
+		log.Println("Migrations ran successfully")
+	}
+
+	return nil
 }
 
-// Close closes the database connection
 func (c *Connection) Close() error {
 	if c.DB != nil {
 		return c.DB.Close()

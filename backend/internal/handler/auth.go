@@ -4,21 +4,24 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/service"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/jwt"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/utils"
+	"github.com/go-playground/validator/v10"
 )
 
 // AuthHandler handles authentication endpoints
 type AuthHandler struct {
 	authService *service.AuthService
+	validate    *validator.Validate
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, validate *validator.Validate) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
+		validate:    validate,
 	}
 }
 
@@ -29,12 +32,17 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req models.SignupRequest
+	var req dto.SignupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	defer r.Body.Close()
+
+	if err := h.validate.Struct(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	response, err := h.authService.Signup(&req)
 	if err != nil {
@@ -52,12 +60,17 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req models.LoginRequest
+	var req dto.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	defer r.Body.Close()
+
+	if err := h.validate.Struct(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	response, err := h.authService.Login(&req)
 	if err != nil {

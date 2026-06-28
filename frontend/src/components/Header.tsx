@@ -3,24 +3,25 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { LucideUserPen, LucideLogIn, LucideSearch, LucideShoppingCart, LucideMenu, LucideX, LucideBellRing, LucideHeart, LucidePhone, LucideTruck, LucidePackage, LucideUser, LucideLayoutDashboard } from 'lucide-react';
+import Link from 'next/link';
 
 import { RootState, AppDispatch } from '@/store';
 import { logout } from '@/store/slices/authSlice';
 import { toggleSidebar } from '@/store/slices/sidebarSlice';
 import AuthModal from '@/components/AuthModal';
-import { LucideUserPen, LucideLogIn, LucideLogOut, LucideSearch, LucideShoppingCart, LucideMenu, LucideX, LucideBellRing, LucideHeart, LucidePhone, LucideTruck, LucidePackage, LucideUser, LucideLayoutDashboard, LucideArrowRightFromLine, LucideArrowLeftFromLine } from 'lucide-react';
-import { Labrada } from 'next/font/google';
-// import { LuUserRound, LuLogOut, LuSearch, LuLogIn, LuShoppingCart } from 'react-icons/lu'
 
 interface HeaderProps {
-  isLoggedIn: boolean;
-  onToggleAuth: () => void;
-  cartCount: number;
+  isLoggedIn?: boolean;
+  onToggleAuth?: () => void;
+  cartCount?: number;
   userEmail?: string;
   onLogout?: () => void;
 }
 
-export default function Header() {
+export default function Header(_props: HeaderProps = {}) {
+  void _props;
+
   const [cartCount, setCartCount] = useState(1);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -63,7 +64,6 @@ export default function Header() {
 
 
   type Visibility = 'always' | 'guest' | 'user' | 'admin';
-  type ShowOn = 'both' | 'desktop' | 'mobile';
 
   const navItems = [
     { label: 'Contact Us',  icon: LucidePhone,   visibleTo: ['always'],         showOn: 'both', link: '#' },
@@ -100,17 +100,20 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-3 shrink-0">
-            {visibleNavItems.filter(item => item.showOn !== 'mobile').map((item) => (
+            {visibleNavItems.filter(item => item.showOn !== 'mobile').map((item) => {
+              const IconComponent = item.icon;
+              return (
                 <button
                   key={item.label}
                   className="text-amber-900 px-4 py-2 rounded-lg font-semibold hover:bg-white transition-colors text-sm"
                 >
-                  <a href={item.link}>
-                    <item.icon className="inline mr-2" size={18} />
+                  <Link href={item.link}>
+                    <IconComponent className="inline mr-2" size={18} />
                     {item.label}
-                  </a>
+                  </Link>
                 </button>
-              ))
+              );
+            })
             }
             <div className="relative">
               <input
@@ -185,18 +188,20 @@ export default function Header() {
         {isMenuOpen && (
           <div className={`${role === 'admin' ? '' : 'lg:hidden'} mt-4 pt-4 border-t-2 border-yellow-200`}>
             <div className="flex flex-col gap-2">
-              {visibleNavItems.filter(item => item.showOn !== 'desktop').map((item) => (
-                <button
-                  key={item.label}
-                  className="w-full text-amber-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-50 transition-colors text-sm text-left"
-                >
-                  <a href={item.link}>
-                    <item.icon className="inline mr-2" size={18} />
-                    {item.label}
-                  </a>
-                </button>
-              ))}
-              
+              {visibleNavItems.filter(item => item.showOn !== 'desktop').map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <button
+                    key={item.label}
+                    className="w-full text-amber-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-50 transition-colors text-sm text-left"
+                  >
+                    <Link href={item.link}>
+                      <IconComponent className="inline mr-2" size={18} />
+                      {item.label}
+                    </Link>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

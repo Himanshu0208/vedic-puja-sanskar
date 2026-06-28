@@ -46,3 +46,5 @@ bin/
 dist/
 
 test-api.sh
+
+backend/uploads

@@ -5,138 +5,215 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/repository"
 )
 
 // ProductService handles product business logic
 type ProductService struct {
-	productRepo *repository.ProductRepository
+	productRepo  *repository.ProductRepository
+	categoryRepo *repository.CategoryRepository
 }
 
 // NewProductService creates a new product service
-func NewProductService(productRepo *repository.ProductRepository) *ProductService {
+func NewProductService(productRepo *repository.ProductRepository, categoryRepo *repository.CategoryRepository) *ProductService {
 	return &ProductService{
-		productRepo: productRepo,
+		productRepo:  productRepo,
+		categoryRepo: categoryRepo,
 	}
 }
 
 // CreateProduct creates a new product (admin only)
-func (s *ProductService) CreateProduct(req *models.CreateProductRequest, createdBy int, imagePath string) (*models.Product, error) {
-	// Validate input
-	if req.Name == "" {
-		return nil, errors.New("product name is required")
-	}
-	if req.Price <= 0 {
-		return nil, errors.New("product price must be greater than 0")
-	}
-	if req.SalePrice < 0 {
-		return nil, errors.New("sale price cannot be negative")
-	}
-	if req.SalePrice > req.Price {
-		return nil, errors.New("sale price cannot be greater than regular price")
-	}
-
-	// Create product
+func (s *ProductService) CreateProduct(req *dto.ProductRequest, createdBy int, imagePath string) (*dto.ProductResponse, error) {
 	product := &models.Product{
-		Name:        req.Name,
-		Description: req.Description,
-		Price:       req.Price,
-		SalePrice:   req.SalePrice,
-		ImagePath:   imagePath,
-		CreatedBy:   createdBy,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		Name:         req.Name,
+		Description:  req.Description,
+		Benefits:     req.Benefits,
+		Price:        req.Price,
+		SellingPrice: req.SellingPrice,
+		OfferPrice:   *req.OfferPrice,
+		ImageURL:     imagePath,
+		ImagePath:    imagePath,
+		CategoryID:   req.CategoryID,
+		Quantity:     req.Quantity,
+		CreatedBy:    createdBy,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
-	// Save product
 	if err := s.productRepo.SaveProduct(product); err != nil {
 		return nil, fmt.Errorf("failed to save product: %w", err)
 	}
 
-	return product, nil
+	category, err := s.categoryRepo.GetCategoryByID(product.CategoryID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get category: %w", err)
+	}
+
+	categoryDTO := &dto.Category{
+		ID:   category.ID,
+		Name: category.Name,
+	}
+
+	return &dto.ProductResponse{
+		ID:           product.ID,
+		Name:         product.Name,
+		Description:  product.Description,
+		Benefits:     product.Benefits,
+		Price:        product.Price,
+		SellingPrice: product.SellingPrice,
+		OfferPrice:   product.OfferPrice,
+		ImageURL:     product.ImageURL,
+		ImagePath:    product.ImagePath,
+		Category:     categoryDTO,
+		Quantity:     product.Quantity,
+		CreatedBy:    product.CreatedBy,
+		CreatedAt:    product.CreatedAt,
+		UpdatedAt:    product.UpdatedAt,
+	}, nil
+}
+
+// UpdateProduct updates an existing product (admin only)
+func (s *ProductService) UpdateProduct(id int, req *dto.UpdateProductRequest, userID int, imagePath string) (*dto.ProductResponse, error) {
+	product, err := s.productRepo.GetProductByID(id)
+	if err != nil {
+		return nil, errors.New("product not found")
+	}
+	updatedProduct := &models.Product{
+		ID:           product.ID,
+		Name:         *req.Name,
+		Description:  *req.Description,
+		Benefits:     *req.Benefits,
+		Price:        *req.Price,
+		SellingPrice: *req.SellingPrice,
+		OfferPrice:   *req.OfferPrice,
+		ImageURL:     imagePath,
+		ImagePath:    imagePath,
+		CategoryID:   *req.CategoryID,
+		Quantity:     *req.Quantity,
+		CreatedBy:    product.CreatedBy,
+		CreatedAt:    product.CreatedAt,
+		UpdatedAt:    time.Now(),
+	}
+
+	if err := s.productRepo.UpdateProduct(updatedProduct); err != nil {
+		return nil, fmt.Errorf("failed to update product: %w", err)
+	}
+
+	category, err := s.categoryRepo.GetCategoryByID(product.CategoryID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get category: %w", err)
+	}
+
+	categoryDTO := &dto.Category{
+		ID:   category.ID,
+		Name: category.Name,
+	}
+	return &dto.ProductResponse{
+		ID:           updatedProduct.ID,
+		Name:         updatedProduct.Name,
+		Description:  updatedProduct.Description,
+		Benefits:     updatedProduct.Benefits,
+		Price:        updatedProduct.Price,
+		SellingPrice: updatedProduct.SellingPrice,
+		OfferPrice:   updatedProduct.OfferPrice,
+		ImageURL:     updatedProduct.ImageURL,
+		ImagePath:    updatedProduct.ImagePath,
+		Category:     categoryDTO,
+		Quantity:     updatedProduct.Quantity,
+		CreatedBy:    updatedProduct.CreatedBy,
+		CreatedAt:    updatedProduct.CreatedAt,
+		UpdatedAt:    updatedProduct.UpdatedAt,
+	}, nil
 }
 
 // GetAllProducts retrieves all products
-func (s *ProductService) GetAllProducts() (*models.ProductListResponse, error) {
+func (s *ProductService) GetAllProducts() (*dto.ProductListResponse, error) {
 	products, err := s.productRepo.GetAllProducts()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get products: %w", err)
 	}
 
-	return &models.ProductListResponse{
-		Products: products,
+	productsDTO := make([]*dto.ProductResponse, len(products))
+	for i, product := range products {
+		categoryDTO := &dto.Category{
+			ID:   product.CategoryID,
+			Name: product.CategoryName,
+		}
+
+		productsDTO[i] = &dto.ProductResponse{
+			ID:           product.ID,
+			Name:         product.Name,
+			Description:  product.Description,
+			Benefits:     product.Benefits,
+			Price:        product.Price,
+			SellingPrice: product.SellingPrice,
+			OfferPrice:   product.OfferPrice,
+			ImageURL:     product.ImageURL,
+			ImagePath:    product.ImagePath,
+			Category:     categoryDTO,
+			Quantity:     product.Quantity,
+			CreatedBy:    product.CreatedBy,
+			CreatedAt:    product.CreatedAt,
+			UpdatedAt:    product.UpdatedAt,
+		}
+	}
+
+	return &dto.ProductListResponse{
+		Products: productsDTO,
 		Total:    len(products),
 	}, nil
 }
 
 // GetProductByID retrieves a product by ID
-func (s *ProductService) GetProductByID(id int) (*models.Product, error) {
+func (s *ProductService) GetProductByID(id int) (*dto.ProductResponse, error) {
 	product, err := s.productRepo.GetProductByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("product not found: %w", err)
 	}
 
-	return product, nil
+	categoryDTO := &dto.Category{
+		ID:   product.CategoryID,
+		Name: product.CategoryName,
+	}
+
+	return &dto.ProductResponse{
+		ID:           product.ID,
+		Name:         product.Name,
+		Description:  product.Description,
+		Benefits:     product.Benefits,
+		Price:        product.Price,
+		SellingPrice: product.SellingPrice,
+		OfferPrice:   product.OfferPrice,
+		ImageURL:     product.ImageURL,
+		ImagePath:    product.ImagePath,
+		Category:     categoryDTO,
+		Quantity:     product.Quantity,
+		CreatedBy:    product.CreatedBy,
+		CreatedAt:    product.CreatedAt,
+		UpdatedAt:    product.UpdatedAt,
+	}, nil
 }
 
-// UpdateProduct updates a product (admin only)
-func (s *ProductService) UpdateProduct(id int, req *models.UpdateProductRequest, userID int) (*models.Product, error) {
-	// Get product
+// DeleteProduct deletes a product (admin only)
+func (s *ProductService) DeleteProduct(id int, userID int) (*dto.DeleteProductReponse, error) {
 	product, err := s.productRepo.GetProductByID(id)
+
 	if err != nil {
 		return nil, errors.New("product not found")
 	}
 
-	// Check if user is the creator
 	if product.CreatedBy != userID {
-		return nil, errors.New("unauthorized: only product creator can update it")
+		return nil, errors.New("unauthorized: only product creator can delete it")
 	}
 
-	// Update fields
-	if req.Name != "" {
-		product.Name = req.Name
-	}
-	if req.Description != "" {
-		product.Description = req.Description
-	}
-	if req.Price > 0 {
-		product.Price = req.Price
-	}
-	if req.SalePrice >= 0 {
-		product.SalePrice = req.SalePrice
-	}
-	if req.SalePrice > req.Price && req.Price > 0 {
-		return nil, errors.New("sale price cannot be greater than regular price")
-	}
-
-	product.UpdatedAt = time.Now()
-
-	// Save product
-	if err := s.productRepo.SaveProduct(product); err != nil {
-		return nil, fmt.Errorf("failed to update product: %w", err)
-	}
-
-	return product, nil
-}
-
-// DeleteProduct deletes a product (admin only)
-func (s *ProductService) DeleteProduct(id int, userID int) error {
-	// Get product
-	product, err := s.productRepo.GetProductByID(id)
-	if err != nil {
-		return errors.New("product not found")
-	}
-
-	// Check if user is the creator
-	if product.CreatedBy != userID {
-		return errors.New("unauthorized: only product creator can delete it")
-	}
-
-	// Delete product
 	if err := s.productRepo.DeleteProduct(id); err != nil {
-		return fmt.Errorf("failed to delete product: %w", err)
+		return nil, fmt.Errorf("failed to delete product: %w", err)
 	}
 
-	return nil
+	return &dto.DeleteProductReponse{
+		ID:      id,
+		Message: "Product deleted Succesfully",
+	}, nil
 }

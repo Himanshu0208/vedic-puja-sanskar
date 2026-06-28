@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { authService } from '@/services/authService';
+import { authService } from '@/services/api/authService';
 
 export interface User {
   id: string;
@@ -11,25 +11,29 @@ export interface AuthResponse {
   id: string;
   email: string;
   role: string;
-  accessToken: string;
-  tokenType: string;
-  expiresIn: number;
+  access_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 export interface AuthState {
   user: User | null;
-  token: string | null;
+  token: string | undefined;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
-  user: typeof window !== 'undefined' && localStorage.getItem('userData') ? JSON.parse(localStorage.getItem('userData') as string) : null,
-  token: typeof window !== 'undefined' ? localStorage.getItem('authToken') : null,
+  user: null,
+  token: undefined,
   isLoading: false,
-  isAuthenticated: typeof window !== 'undefined' ? !!localStorage.getItem('authToken') : false,
+  isAuthenticated: false,
   error: null,
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
 };
 
 // Async thunks
@@ -39,8 +43,8 @@ export const signup = createAsyncThunk(
     try {
       const response = await authService.signup(credentials.email, credentials.password);
       return response;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Signup failed');
+    } catch (error: unknown) {
+      return rejectWithValue(getErrorMessage(error, 'Signup failed'));
     }
   }
 );
@@ -51,8 +55,8 @@ export const login = createAsyncThunk(
     try {
       const response = await authService.login(credentials.email, credentials.password);
       return response;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Login failed');
+    } catch (error: unknown) {
+      return rejectWithValue(getErrorMessage(error, 'Login failed'));
     }
   }
 );
@@ -80,6 +84,12 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
     },
+    hydrateAuth: (state, action: PayloadAction<{ user: User | null; token: string | null }>) => {
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.isAuthenticated = !!action.payload.token;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     // Signup handlers
@@ -95,12 +105,12 @@ const authSlice = createSlice({
           email: action.payload.email,
           role: action.payload.role,
         };
-        state.token = action.payload.accessToken;
+        state.token = action.payload.access_token;
         state.isAuthenticated = true;
         
         // Persist to localStorage
         if (typeof window !== 'undefined') {
-          localStorage.setItem('authToken', action.payload.accessToken);
+          localStorage.setItem('authToken', action.payload.access_token);
           localStorage.setItem('userData', JSON.stringify(state.user));
         }
       })
@@ -122,12 +132,12 @@ const authSlice = createSlice({
           email: action.payload.email,
           role: action.payload.role,
         };
-        state.token = action.payload.accessToken;
+        state.token = action.payload.access_token;
         state.isAuthenticated = true;
         
         // Persist to localStorage
         if (typeof window !== 'undefined') {
-          localStorage.setItem('authToken', action.payload.accessToken);
+          localStorage.setItem('authToken', action.payload.access_token);
           localStorage.setItem('userData', JSON.stringify(state.user));
         }
       })
@@ -147,5 +157,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, clearAuth } = authSlice.actions;
+export const { clearError, clearAuth, hydrateAuth } = authSlice.actions;
 export default authSlice.reducer;
