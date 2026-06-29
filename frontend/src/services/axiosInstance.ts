@@ -5,6 +5,7 @@ const backendUrl = process.env.NEXT_PUBLIC_API_URL;
 // Create axios instance with base configuration
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: backendUrl,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

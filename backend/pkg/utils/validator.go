@@ -1,22 +1,8 @@
 package utils
 
 import (
-	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
-
 	"github.com/go-playground/validator/v10"
 )
-
-func ValidateImageFields(sl validator.StructLevel) {
-	req := sl.Current().Interface().(dto.UpdateProductRequest)
-
-	hasImage := req.Image != nil
-	hasImagePath := req.ImagePath != nil && *req.ImagePath != ""
-	hasImageURL := req.ImageURL != nil && *req.ImageURL != ""
-
-	if !hasImage && !(hasImagePath && hasImageURL) {
-		sl.ReportError(req.Image, "Image", "image", "imageOrPathUrl", "")
-	}
-}
 
 func ValidateStrongPassword(fl validator.FieldLevel) bool {
 	password := fl.Field().String()

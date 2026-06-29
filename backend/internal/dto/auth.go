@@ -11,10 +11,11 @@ type SignupRequest struct {
 }
 
 type AuthResponse struct {
-	ID          int    `json:"id"`
-	Email       string `json:"email"`
-	Role        string `json:"role"`
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
+	ID                    int    `json:"id"`
+	Email                 string `json:"email"`
+	Role                  string `json:"role"`
+	AccessToken           string `json:"-"`
+	RefreshToken          string `json:"-"`
+	RefreshTokenExpiresIn int    `json:"-"`
+	AccessTokenExpiresIn  int    `json:"-"`
 }

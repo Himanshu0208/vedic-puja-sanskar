@@ -3,7 +3,8 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-
+	"time"
+	
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
 )
 
@@ -113,4 +114,38 @@ func (ur *UserRepository) GetAllUsers() ([]*models.User, error) {
 	}
 
 	return users, rows.Err()
+}
+
+func (ur *UserRepository) GetUserIdFromRefreshToken(token string) (int, error) {
+	var userId int
+	err := ur.db.QueryRow("SELECT user_id FROM refresh_tokens WHERE token=$1", token).Scan(&userId)
+	if err != nil {
+		return -1, err;
+	}
+
+	return userId, nil;
+}
+
+func (ur *UserRepository) SaveRefreshToken(userID int, token string, expiresAt time.Time) error {
+	_, err := ur.db.Exec(
+		"INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
+		userID, token, expiresAt,
+	)
+	return err
+}
+
+func (ur *UserRepository) DeleteRefreshTokenByToken(token string) error {
+	_, err := ur.db.Exec(
+		"DELETE FROM refresh_tokens WHERE token = $1",
+		token,
+	)
+	return err
+}
+
+func (ur *UserRepository) DeleteRefreshTokenByUserID(userID int) error {
+	_, err := ur.db.Exec(
+		"DELETE FROM refresh_tokens WHERE user_id = $1",
+		userID,
+	)
+	return err
 }

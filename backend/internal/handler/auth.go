@@ -50,6 +50,8 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{Name: "access_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.AccessTokenExpiresIn})
+	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.RefreshTokenExpiresIn})
 	utils.WriteJSON(w, http.StatusCreated, response)
 }
 
@@ -78,6 +80,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{Name: "access_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.AccessTokenExpiresIn})
+	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.RefreshTokenExpiresIn})
 	utils.WriteJSON(w, http.StatusOK, response)
 }
 
@@ -102,4 +106,19 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, response)
 }
 
-// ExtractToken moved to pkg/utils
+func (h *AuthHandler) RefreshAuthToken(w http.ResponseWriter, r *http.Request) {
+	refresh_token, err := r.Cookie("refresh_token")
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, "unauthorized from middleware")
+		return
+	}
+
+	claims, err := h.authService.VerifyToken(refresh_token.Value)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, "invalid or expired token")
+		return
+	}
+
+	reponse, err := h.authService.RefreshToken(refresh_token.Value ,claims);
+	utils.WriteJSON(w, http.StatusOK, reponse);
+}
