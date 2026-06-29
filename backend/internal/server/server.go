@@ -8,7 +8,6 @@ import (
 
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/db"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/config"
-	// "github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/handler"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/middleware"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
@@ -16,6 +15,7 @@ import (
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/service"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/jwt"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/utils"
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -30,7 +30,6 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
-
 	// DB
 	dbConn, err := db.NewConnection(cfg.Database.URL)
 	if err != nil {
@@ -46,14 +45,13 @@ func New(cfg config.Config) (*Server, error) {
 	tokenManager := jwt.NewTokenManager(cfg.JWT.Secret)
 
 	// Services
-	authService := service.NewAuthService(userRepo, tokenManager, cfg.JWT.ExpirationHours)
+	authService := service.NewAuthService(userRepo, tokenManager, cfg.JWT.AccessTokenExpiryMinutes, cfg.JWT.RefreshTokenExpiryDays)
 	productService := service.NewProductService(productRepo, categoryRepo)
 	categoryService := service.NewCategoryService(categoryRepo)
 
 	// ✅ Validator (single instance)
 	validate := validator.New()
 	validate.RegisterValidation("strong_password", utils.ValidateStrongPassword)
-	// validate.RegisterStructValidation(utils.ValidateImageFields, dto.UpdateProductRequest{})
 
 	// Default users
 	createDefaultAccount(userRepo, cfg.Auth.DefaultAdminEmail, cfg.Auth.DefaultAdminPassword, models.RoleAdmin)
@@ -93,6 +91,7 @@ func (s *Server) setupRoutes() http.Handler {
 
 	mux.HandleFunc("/api/v1/auth/signup", authHandler.Signup)
 	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
+	mux.HandleFunc("/api/v1/auth/refresh", authHandler.RefreshAuthToken)
 
 	mux.HandleFunc("/api/v1/products", productHandler.GetAllProducts)
 	mux.HandleFunc("/api/v1/products/get", productHandler.GetProductByID)
