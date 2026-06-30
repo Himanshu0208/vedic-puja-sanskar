@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { authService } from '@/services/api/authService';
+import { getStoredItem, setStoredItem, removeStoredItem } from '@/utils/storage';
 
 export interface User {
   id: string;
@@ -18,15 +19,13 @@ export interface AuthResponse {
 
 export interface AuthState {
   user: User | null;
-  token: string | undefined;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
-  user: null,
-  token: undefined,
+  user: getStoredItem('userData'),
   isLoading: false,
   isAuthenticated: false,
   error: null,
@@ -64,10 +63,8 @@ export const login = createAsyncThunk(
 export const logout = createAsyncThunk(
   'auth/logout',
   async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userData');
-    }
+    console.log("Logout to be implemented");
+    return;
   }
 );
 
@@ -80,14 +77,12 @@ const authSlice = createSlice({
     },
     clearAuth: (state) => {
       state.user = null;
-      state.token = null;
       state.isAuthenticated = false;
       state.error = null;
     },
     hydrateAuth: (state, action: PayloadAction<{ user: User | null; token: string | null }>) => {
       state.user = action.payload.user;
-      state.token = action.payload.token;
-      state.isAuthenticated = !!action.payload.token;
+      state.isAuthenticated = !!action.payload.user;
       state.error = null;
     },
   },
@@ -105,14 +100,10 @@ const authSlice = createSlice({
           email: action.payload.email,
           role: action.payload.role,
         };
-        state.token = action.payload.access_token;
         state.isAuthenticated = true;
         
         // Persist to localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('authToken', action.payload.access_token);
-          localStorage.setItem('userData', JSON.stringify(state.user));
-        }
+        setStoredItem('userData', state.user);
       })
       .addCase(signup.rejected, (state, action) => {
         state.isLoading = false;
@@ -132,14 +123,10 @@ const authSlice = createSlice({
           email: action.payload.email,
           role: action.payload.role,
         };
-        state.token = action.payload.access_token;
         state.isAuthenticated = true;
         
         // Persist to localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('authToken', action.payload.access_token);
-          localStorage.setItem('userData', JSON.stringify(state.user));
-        }
+        setStoredItem('userData', state.user);
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -149,8 +136,8 @@ const authSlice = createSlice({
     // Logout handlers
     builder
       .addCase(logout.fulfilled, (state) => {
+        removeStoredItem('userData');
         state.user = null;
-        state.token = null;
         state.isAuthenticated = false;
         state.error = null;
       });
