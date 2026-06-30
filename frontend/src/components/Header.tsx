@@ -1,7 +1,7 @@
 'use client';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { LucideUserPen, LucideLogIn, LucideSearch, LucideShoppingCart, LucideMenu, LucideX, LucideBellRing, LucideHeart, LucidePhone, LucideTruck, LucidePackage, LucideUser, LucideLayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
@@ -22,14 +22,22 @@ interface HeaderProps {
 export default function Header(_props: HeaderProps = {}) {
   void _props;
 
+  const [mounted, setMounted] = useState(false);
   const [cartCount, setCartCount] = useState(1);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'signup'>('login');
 
+  useEffect(() => {
+    setMounted(true);
+  }, [])
+  
   // Redux selectors
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
-
+  
+  const safeUser = mounted ? user : null;
+  const safeisAuthenticated = mounted ? isAuthenticated : false;
+  
   const dispatch = useDispatch<AppDispatch>();
   
   const handleOpenAuthModal = (tab: 'login' | 'signup' = 'login') => {
@@ -47,7 +55,7 @@ export default function Header(_props: HeaderProps = {}) {
   };
 
   const handleMenuClick = () => {
-    if (user?.role === 'admin') {
+    if (safeUser?.role === 'admin') {
       dispatch(toggleSidebar());
     } else {
       setIsMenuOpen(!isMenuOpen);
@@ -55,7 +63,7 @@ export default function Header(_props: HeaderProps = {}) {
   };
 
   const addToCart = () => {
-    if (!isAuthenticated) {
+    if (!safeisAuthenticated) {
       handleOpenAuthModal('login');
       return;
     }
@@ -74,7 +82,7 @@ export default function Header(_props: HeaderProps = {}) {
     { label: 'Login',       icon: LucideLogIn,   visibleTo: ['guest'],          showOn: 'mobile', link: '#' },
   ];
 
-  const role: Visibility = !isAuthenticated ? 'guest' : user?.role === 'admin' ? 'admin' : 'user';
+  const role: Visibility = !safeisAuthenticated ? 'guest' : safeUser?.role === 'admin' ? 'admin' : 'user';
 
   const visibleNavItems = navItems.filter(item => item.visibleTo.includes('always') || item.visibleTo.includes(role));
 
@@ -133,7 +141,7 @@ export default function Header(_props: HeaderProps = {}) {
             </button>
 
             {/* User Info / Auth Button */}
-            {isAuthenticated ? (
+            {safeisAuthenticated ? (
               <div className="hidden lg:flex items-center gap-2">
                 <button
                   onClick={handleLogoutClick}
@@ -154,7 +162,7 @@ export default function Header(_props: HeaderProps = {}) {
             )}
 
             {/* Notification */}
-            { isAuthenticated && <div className="relative">
+            { safeisAuthenticated && <div className="relative">
               <button className="flex gap-2 text-amber-900 rounded-lg font-semibold hover:bg-yellow-50 transition-colors text-sm sm:text-base">
                 <LucideBellRing className="my-auto font-bold text-lg" />
                 {/* <span className="hidden sm:inline">Notifications</span> */}
@@ -163,14 +171,14 @@ export default function Header(_props: HeaderProps = {}) {
             }
 
             {/* Favorite */}
-            <div className="relative" onClick={isAuthenticated ? addToCart : () => handleOpenAuthModal('login')}>
+            <div className="relative" onClick={safeisAuthenticated ? addToCart : () => handleOpenAuthModal('login')}>
               <button className="flex gap-2 text-amber-900 rounded-lg font-semibold hover:bg-yellow-50 transition-colors text-sm sm:text-base">
                 <LucideHeart className="my-auto font-bold text-lg"/>
               </button>
             </div>
 
             {/* Cart */}
-            {user?.role !=='admin' && (<div className="relative" onClick={isAuthenticated ? addToCart : () => handleOpenAuthModal('login')  }>
+            {safeUser?.role !=='admin' && (<div className="relative" onClick={safeisAuthenticated ? addToCart : () => handleOpenAuthModal('login')  }>
               <button className="flex gap-2 text-amber-900 rounded-lg font-semibold hover:bg-yellow-50 transition-colors text-sm sm:text-base">
                 <LucideShoppingCart className="my-auto font-bold text-lg" />
                 {cartCount > 0 && (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSelector, useDispatch } from 'react-redux';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   LucideArrowRightFromLine, 
@@ -14,10 +14,18 @@ import { RootState, AppDispatch } from '@/store';
 import { adminNavItems } from '@/constants/navItems';
 
 export default function AdminSideBar() {
+  const [mounted, setMounted] = useState(false);
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { isOpen, isMobile } = useSelector((state: RootState) => state.sidebar);
   const dispatch = useDispatch<AppDispatch>();
   
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const safeIsAuthenticated = mounted && isAuthenticated;
+  const safeUser = mounted ? user : null;
+
   // Set screen size on mount and resize
   useEffect(() => {
     const handleResize = () => {
@@ -29,8 +37,8 @@ export default function AdminSideBar() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [dispatch]);
-  
-  if(!isAuthenticated || user?.role !== 'admin') {
+
+  if(!safeIsAuthenticated || safeUser?.role !== "admin") {
     return null;
   }
 

@@ -11,25 +11,12 @@ const axiosInstance: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor to include auth token
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = getAuthToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
 // Response interceptor to handle auth errors
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('authToken');
         localStorage.removeItem('userData');
       }
     }
