@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -11,6 +12,7 @@ import (
 type Claims struct {
 	UserID int    `json:"user_id"`
 	Email  string `json:"email"`
+	Role   string    `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -25,12 +27,13 @@ func NewTokenManager(secret string) *TokenManager {
 }
 
 // GenerateToken generates a new JWT token
-func (tm *TokenManager) GenerateToken(userID int, email string, expirationHours int) (string, error) {
+func (tm *TokenManager) GenerateToken(userID int, email string, role string, expirationSeconds int) (string, error) {
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirationHours) * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirationSeconds) * time.Second)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "vedic-puja-sanskar",
 		},
@@ -42,6 +45,7 @@ func (tm *TokenManager) GenerateToken(userID int, email string, expirationHours 
 		return "", err
 	}
 
+	fmt.Println("Token Generated: expiryAt: [%s], issuedAt: [%s]", claims.ExpiresAt.Time.String(), claims.IssuedAt.Time.String())
 	return tokenString, nil
 }
 

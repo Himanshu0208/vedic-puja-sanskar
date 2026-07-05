@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -34,9 +33,9 @@ type ServerConfig struct {
 
 // JWTConfig holds JWT configuration
 type JWTConfig struct {
-	Secret                   string
-	AccessTokenExpiryMinutes int
-	RefreshTokenExpiryDays   int
+	Secret             string
+	AccessTokenExpiry  string
+	RefreshTokenExpiry string
 }
 
 // DatabaseConfig holds database configuration
@@ -49,47 +48,34 @@ type DatabaseConfig struct {
 func Load() Config {
 	return Config{
 		Server: ServerConfig{
-			Port:         getEnvString("PORT", "8080"),
-			Host:         getEnvString("HOST", "localhost"),
+			Port:         getEnv("PORT", "8080"),
+			Host:         getEnv("HOST", "localhost"),
 			ReadTimeout:  15 * time.Second,
 			WriteTimeout: 15 * time.Second,
 		},
 		JWT: JWTConfig{
-			Secret:                   getEnvString("JWT_SECRET", "your-secret-key-change-in-production"),
-			AccessTokenExpiryMinutes: getEnvInt("ACCESS_TOKEN_EXPIRY", 15),
-			RefreshTokenExpiryDays:   getEnvInt("REFRESH_TOKEN_EXPIRY", 7),
+			Secret:             getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+			AccessTokenExpiry:  getEnv("ACCESS_TOKEN_EXPIRY", "10m"),
+			RefreshTokenExpiry: getEnv("REFRESH_TOKEN_EXPIRY", "1d"),
 		},
 		Database: DatabaseConfig{
-			URL:              getEnvString("POSTGRES_DATABASE_URL", ""),
-			ImageStoragePath: getEnvString("IMAGE_STORAGE_PATH", "./uploads"),
+			URL:              getEnv("POSTGRES_DATABASE_URL", ""),
+			ImageStoragePath: getEnv("IMAGE_STORAGE_PATH", "./uploads"),
 		},
 		Auth: AuthConfig{
-			DefaultAdminEmail:       getEnvString("DEFAULT_ADMIN_EMAIL", "admin@vedic-puja.com"),
-			DefaultAdminPassword:    getEnvString("DEFAULT_ADMIN_PASSWORD", "Admin@123"),
-			DefaultDevAdminEmail:    getEnvString("DEFAULT_DEV_ADMIN_EMAIL", "dev-admin@vedic-puja.com"),
-			DefaultDevAdminPassword: getEnvString("DEFAULT_DEV_ADMIN_PASSWORD", "Dev@123"),
-			DefaultDevUserEmail:     getEnvString("DEFAULT_DEV_USER_EMAIL", "dev-user@vedic-puja.com"),
-			DefaultDevUserPassword:  getEnvString("DEFAULT_DEV_USER_PASSWORD", "Dev@123"),
+			DefaultAdminEmail:       getEnv("DEFAULT_ADMIN_EMAIL", "admin@vedic-puja.com"),
+			DefaultAdminPassword:    getEnv("DEFAULT_ADMIN_PASSWORD", "Admin@123"),
+			DefaultDevAdminEmail:    getEnv("DEFAULT_DEV_ADMIN_EMAIL", "dev-admin@vedic-puja.com"),
+			DefaultDevAdminPassword: getEnv("DEFAULT_DEV_ADMIN_PASSWORD", "Dev@123"),
+			DefaultDevUserEmail:     getEnv("DEFAULT_DEV_USER_EMAIL", "dev-user@vedic-puja.com"),
+			DefaultDevUserPassword:  getEnv("DEFAULT_DEV_USER_PASSWORD", "Dev@123"),
 		},
 	}
 }
 
-func getEnvString(key, defaultValue string) string {
+func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}
 	return defaultValue
-}
-
-func getEnvInt(key string, defaultValue int) int {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-
-	num, err := strconv.Atoi(value)
-	if err != nil {
-		return defaultValue
-	}
-	return num
 }

@@ -51,7 +51,7 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{Name: "access_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.AccessTokenExpiresIn})
-	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.RefreshTokenExpiresIn})
+	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: response.RefreshToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.RefreshTokenExpiresIn})
 	utils.WriteJSON(w, http.StatusCreated, response)
 }
 
@@ -81,7 +81,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{Name: "access_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.AccessTokenExpiresIn})
-	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.RefreshTokenExpiresIn})
+	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: response.RefreshToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.RefreshTokenExpiresIn})
 	utils.WriteJSON(w, http.StatusOK, response)
 }
 
@@ -119,6 +119,9 @@ func (h *AuthHandler) RefreshAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reponse, err := h.authService.RefreshToken(refresh_token.Value ,claims);
-	utils.WriteJSON(w, http.StatusOK, reponse);
+	response, err := h.authService.RefreshToken(refresh_token.Value ,claims);
+	
+	http.SetCookie(w, &http.Cookie{Name: "access_token", Value: response.AccessToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.AccessTokenExpiresIn})
+	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: response.RefreshToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.RefreshTokenExpiresIn})
+	utils.WriteJSON(w, http.StatusOK, response);
 }

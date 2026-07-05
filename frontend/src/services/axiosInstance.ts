@@ -12,25 +12,35 @@ const axiosInstance: AxiosInstance = axios.create({
 });
 
 // Response interceptor to handle auth errors
+let isRefreshing = false;
+
+// Response interceptor to handle auth errors
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('userData');
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshing) {
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        await axiosInstance.post('/auth/refresh');
+        isRefreshing = false;
+        return axiosInstance(originalRequest); // original request retry
+      } catch (refreshError) {
+        isRefreshing = false;
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('userData');
+          window.location.href = '/';
+        }
+        return Promise.reject(refreshError);
       }
     }
+
     return Promise.reject(error);
   }
 );
-
-// Helper function to get auth token from localStorage
-function getAuthToken(): string | null {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('authToken');
-  }
-  return null;
-}
 
 const getErrorMessage = (error: unknown, fallback: string) => {
     if (axios.isAxiosError<{ error?: string }>(error)) {
