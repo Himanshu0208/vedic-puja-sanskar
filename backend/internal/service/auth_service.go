@@ -21,12 +21,22 @@ type AuthService struct {
 }
 
 // NewAuthService creates a new authentication service
-func NewAuthService(userRepo *repository.UserRepository, tokenManager *jwt.TokenManager, accessTokenExpiryMinutes int, refreshTokenExpiryDays int) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, tokenManager *jwt.TokenManager, accessTokenExpiry string, refreshTokenExpiry string) *AuthService {
+	accessTokenExpiryDuration, err := time.ParseDuration(accessTokenExpiry)
+	if err != nil {
+		panic(fmt.Sprintf("Invalid access token expiry duration: %v", err))
+	}
+
+	refreshTokenExpiryDuration, err := time.ParseDuration(refreshTokenExpiry)
+	if err != nil {
+		panic(fmt.Sprintf("Invalid refresh token expiry duration: %v", err))
+	}
+	
 	return &AuthService{
 		userRepo:           userRepo,
 		tokenManager:       tokenManager,
-		acessTokenExpiry:   accessTokenExpiryMinutes,
-		refreshTokenExpiry: refreshTokenExpiryDays,
+		acessTokenExpiry:   int(accessTokenExpiryDuration.Seconds()),
+		refreshTokenExpiry: int(refreshTokenExpiryDuration.Seconds()),
 	}
 }
 
@@ -54,12 +64,12 @@ func (s *AuthService) Signup(req *dto.SignupRequest) (*dto.AuthResponse, error) 
 		return nil, fmt.Errorf("failed to save user: %w", err)
 	}
 
-	accessToken, err := s.tokenManager.GenerateToken(savedUser.ID, savedUser.Email, s.acessTokenExpiry)
+	accessToken, err := s.tokenManager.GenerateToken(savedUser.ID, savedUser.Email, string(savedUser.Role), s.acessTokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	refreshToken, err := s.tokenManager.GenerateToken(savedUser.ID, savedUser.Email, s.refreshTokenExpiry)
+	refreshToken, err := s.tokenManager.GenerateToken(savedUser.ID, savedUser.Email, string(savedUser.Role), s.refreshTokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
@@ -74,8 +84,8 @@ func (s *AuthService) Signup(req *dto.SignupRequest) (*dto.AuthResponse, error) 
 		Role:                  string(savedUser.Role),
 		AccessToken:           accessToken,
 		RefreshToken:          refreshToken,
-		AccessTokenExpiresIn:  s.acessTokenExpiry * 60,
-		RefreshTokenExpiresIn: s.refreshTokenExpiry * 24 * 60 * 60,
+		AccessTokenExpiresIn:  s.acessTokenExpiry,
+		RefreshTokenExpiresIn: s.refreshTokenExpiry,
 	}, nil
 }
 
@@ -92,12 +102,12 @@ func (s *AuthService) Login(req *dto.LoginRequest) (*dto.AuthResponse, error) {
 		return nil, errors.New("invalid credentials")
 	}
 
-	accessToken, err := s.tokenManager.GenerateToken(user.ID, user.Email, s.acessTokenExpiry)
+	accessToken, err := s.tokenManager.GenerateToken(user.ID, user.Email, string(user.Role), s.acessTokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	refreshToken, err := s.tokenManager.GenerateToken(user.ID, user.Email, s.refreshTokenExpiry)
+	refreshToken, err := s.tokenManager.GenerateToken(user.ID, user.Email, string(user.Role), s.refreshTokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
@@ -111,8 +121,8 @@ func (s *AuthService) Login(req *dto.LoginRequest) (*dto.AuthResponse, error) {
 		Role:                  string(user.Role),
 		AccessToken:           accessToken,
 		RefreshToken:          refreshToken,
-		AccessTokenExpiresIn:  s.acessTokenExpiry * 60,
-		RefreshTokenExpiresIn: s.refreshTokenExpiry * 24 * 60 * 60,
+		AccessTokenExpiresIn:  s.acessTokenExpiry,
+		RefreshTokenExpiresIn: s.refreshTokenExpiry,
 	}, nil
 }
 
@@ -126,17 +136,12 @@ func (s *AuthService) RefreshToken(refreshToken string, claims *jwt.Claims) (*dt
 		return nil, fmt.Errorf("bsdk apne baap ko mt sikha");
 	}
 
-	user, err := s.userRepo.GetUserByID(userId);
-	if err != nil {
-		return nil, fmt.Errorf("user not found")
-	}
-
-	accessToken, err := s.tokenManager.GenerateToken(user.ID, user.Email, s.acessTokenExpiry)
+	accessToken, err := s.tokenManager.GenerateToken(claims.UserID, claims.Email, string(claims.Role), s.acessTokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	newRefreshToken, err := s.tokenManager.GenerateToken(user.ID, user.Email, s.refreshTokenExpiry)
+	newRefreshToken, err := s.tokenManager.GenerateToken(claims.UserID, claims.Email, string(claims.Role), s.refreshTokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
@@ -145,18 +150,18 @@ func (s *AuthService) RefreshToken(refreshToken string, claims *jwt.Claims) (*dt
 		return nil, fmt.Errorf("Unable to delete previous token: %w", err)
 	}
 
-	if err := s.SaveRefreshToken(newRefreshToken, user.ID); err != nil {
+	if err := s.SaveRefreshToken(newRefreshToken, claims.UserID); err != nil {
 		return nil, fmt.Errorf("Unable to Save auth token: %w", err)
 	}
 
 	return &dto.AuthResponse{
-		ID:                    user.ID,
-		Email:                 user.Email,
-		Role:                  string(user.Role),
+		ID:                    claims.UserID,
+		Email:                 claims.Email,
+		Role:                  string(claims.Role),
 		AccessToken:           accessToken,
 		RefreshToken:          newRefreshToken,
-		AccessTokenExpiresIn:  s.acessTokenExpiry * 60,
-		RefreshTokenExpiresIn: s.refreshTokenExpiry * 24 * 60 * 60,
+		AccessTokenExpiresIn:  s.acessTokenExpiry,
+		RefreshTokenExpiresIn: s.refreshTokenExpiry,
 	}, nil
 }
 

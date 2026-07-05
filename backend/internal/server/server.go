@@ -45,7 +45,7 @@ func New(cfg config.Config) (*Server, error) {
 	tokenManager := jwt.NewTokenManager(cfg.JWT.Secret)
 
 	// Services
-	authService := service.NewAuthService(userRepo, tokenManager, cfg.JWT.AccessTokenExpiryMinutes, cfg.JWT.RefreshTokenExpiryDays)
+	authService := service.NewAuthService(userRepo, tokenManager, cfg.JWT.AccessTokenExpiry, cfg.JWT.RefreshTokenExpiry)
 	productService := service.NewProductService(productRepo, categoryRepo)
 	categoryService := service.NewCategoryService(categoryRepo)
 
@@ -81,7 +81,6 @@ func (s *Server) setupRoutes() http.Handler {
 
 	mux := http.NewServeMux()
 
-	// Handlers (DI)
 	authHandler := handler.NewAuthHandler(s.authService, s.validate)
 	uploadsDir := s.config.Database.ImageStoragePath
 	productHandler := handler.NewProductHandler(s.productService, uploadsDir, s.validate)
