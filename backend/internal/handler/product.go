@@ -56,6 +56,8 @@ func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	claims, isAuthorized := r.Context().Value("claims").(*jwt.Claims)
+
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		utils.WriteError(w, http.StatusBadRequest, "product id is required")
@@ -68,7 +70,7 @@ func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	product, err := h.productService.GetProductByID(id)
+	product, err := h.productService.GetProductByID(id, claims.UserID, claims.Role, isAuthorized);
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, err.Error())
 		return
