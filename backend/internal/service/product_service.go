@@ -129,7 +129,7 @@ func (s *ProductService) UpdateProduct(id int, req *dto.UpdateProductRequest, us
 }
 
 // GetAllProducts retrieves all products
-func (s *ProductService) GetAllProducts() (*dto.ProductListResponse, error) {
+func (s *ProductService) GetAllProducts(role string) (*dto.ProductListResponse, error) {
 	products, err := s.productRepo.GetAllProducts()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get products: %w", err)
@@ -147,16 +147,19 @@ func (s *ProductService) GetAllProducts() (*dto.ProductListResponse, error) {
 			Name:         product.Name,
 			Description:  product.Description,
 			Benefits:     product.Benefits,
-			Price:        product.Price,
 			SellingPrice: product.SellingPrice,
 			OfferPrice:   product.OfferPrice,
 			ImageURL:     product.ImageURL,
 			ImagePath:    product.ImagePath,
 			Category:     categoryDTO,
-			Quantity:     product.Quantity,
 			CreatedBy:    product.CreatedBy,
 			CreatedAt:    product.CreatedAt,
 			UpdatedAt:    product.UpdatedAt,
+		}
+
+		if role == "admin" {
+			productsDTO[i].Price = product.Price
+			productsDTO[i].Quantity = product.Quantity
 		}
 	}
 
@@ -193,12 +196,12 @@ func (s *ProductService) GetProductByID(id int, userID int, role string, isAutho
 		UpdatedAt:    product.UpdatedAt,
 	}
 
-	if !isAuthorized || role != "admin" {
-		response.Price = product.Price;
-		response.Quantity = product.Quantity;
+	if isAuthorized && role == "admin" {
+		response.Price = product.Price
+		response.Quantity = product.Quantity
 	}
 
-	return response, nil;
+	return response, nil
 }
 
 // DeleteProduct deletes a product (admin only)

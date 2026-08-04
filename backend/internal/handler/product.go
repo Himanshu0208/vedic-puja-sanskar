@@ -40,7 +40,14 @@ func (h *ProductHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response, err := h.productService.GetAllProducts()
+	
+	role := "user"
+	claims, isAuthorized := r.Context().Value("claims").(*jwt.Claims)
+	if isAuthorized {
+		role = claims.Role
+	}
+
+	response, err := h.productService.GetAllProducts(role)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -56,8 +63,13 @@ func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	var userID int
+	var role string
 	claims, isAuthorized := r.Context().Value("claims").(*jwt.Claims)
-
+	if isAuthorized {
+		userID = claims.UserID
+		role = claims.Role
+	}
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		utils.WriteError(w, http.StatusBadRequest, "product id is required")
@@ -70,7 +82,7 @@ func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	product, err := h.productService.GetProductByID(id, claims.UserID, claims.Role, isAuthorized);
+	product, err := h.productService.GetProductByID(id, userID, role, isAuthorized);
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, err.Error())
 		return

@@ -105,7 +105,7 @@ func (h *CartHandler) RemoveFromCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cartItemResponse, err := h.cartService.RemoveFromCart(claims.UserID, req.ProductID)
+	cartItemResponse, err := h.cartService.RemoveFromCart(claims.UserID, req.ProductID, req.Quantity)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
