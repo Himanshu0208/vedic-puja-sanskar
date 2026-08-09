@@ -25,6 +25,7 @@ type Server struct {
 	authService     *service.AuthService
 	productService  *service.ProductService
 	categoryService *service.CategoryService
+	cartService		*service.CartService
 	dbConn          *db.Connection
 	validate        *validator.Validate // ✅ central validator
 }
@@ -40,6 +41,7 @@ func New(cfg config.Config) (*Server, error) {
 	userRepo := repository.NewUserRepository(dbConn.DB)
 	productRepo := repository.NewProductRepository(dbConn.DB)
 	categoryRepo := repository.NewCategoryRepository(dbConn.DB)
+	cartRepo := repository.NewCartRepository(dbConn.DB)
 
 	// JWT
 	tokenManager := jwt.NewTokenManager(cfg.JWT.Secret)
@@ -48,6 +50,7 @@ func New(cfg config.Config) (*Server, error) {
 	authService := service.NewAuthService(userRepo, tokenManager, cfg.JWT.AccessTokenExpiry, cfg.JWT.RefreshTokenExpiry)
 	productService := service.NewProductService(productRepo, categoryRepo)
 	categoryService := service.NewCategoryService(categoryRepo)
+	cartService := service.NewCartService(cartRepo, productRepo)
 
 	// ✅ Validator (single instance)
 	validate := validator.New()
@@ -63,6 +66,7 @@ func New(cfg config.Config) (*Server, error) {
 		authService:     authService,
 		productService:  productService,
 		categoryService: categoryService,
+		cartService: cartService,
 		dbConn:          dbConn,
 		validate:        validate,
 	}
@@ -85,6 +89,7 @@ func (s *Server) setupRoutes() http.Handler {
 	uploadsDir := s.config.Database.ImageStoragePath
 	productHandler := handler.NewProductHandler(s.productService, uploadsDir, s.validate)
 	categoryHandler := handler.NewCategoryHandler(s.categoryService, s.validate)
+	cartHandler := handler.NewCartHandler(s.cartService, s.validate)
 
 	// ---------------- PUBLIC ROUTES ----------------
 
@@ -92,8 +97,6 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/v1/auth/refresh", authHandler.RefreshAuthToken)
 
-	mux.HandleFunc("/api/v1/products", productHandler.GetAllProducts)
-	mux.HandleFunc("/api/v1/products/get", productHandler.GetProductByID)
 	mux.HandleFunc("/api/v1/categories", categoryHandler.GetAllCategories)
 
 	mux.HandleFunc("/uploads/", utils.ServeImage(uploadsDir))
@@ -110,10 +113,16 @@ func (s *Server) setupRoutes() http.Handler {
 	protectedMux.HandleFunc("/api/v1/auth/profile", authHandler.GetProfile)
 
 	// product protected actions
+	protectedMux.HandleFunc("/api/v1/products", productHandler.GetAllProducts)
+	protectedMux.HandleFunc("/api/v1/products/get", productHandler.GetProductByID)
 	protectedMux.HandleFunc("/api/v1/products/create", productHandler.CreateProduct)
 	protectedMux.HandleFunc("/api/v1/products/update", productHandler.UpdateProduct)
 	protectedMux.HandleFunc("/api/v1/products/delete", productHandler.DeleteProduct)
 
+	// cart protected routes
+	protectedMux.HandleFunc("/api/v1/cart", cartHandler.GetCart);
+	protectedMux.HandleFunc("/api/v1/cart/item/add", cartHandler.AddToCart);
+	protectedMux.HandleFunc("/api/v1/cart/item/remove", cartHandler.RemoveFromCart);
 	// wrap with auth middleware
 	protectedHandler := middleware.AuthMiddleware(s.authService)(protectedMux)
 

@@ -10,6 +10,7 @@ import { RootState, AppDispatch } from '@/store';
 import { logout } from '@/store/slices/authSlice';
 import { toggleSidebar } from '@/store/slices/sidebarSlice';
 import AuthModal from '@/components/AuthModal';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   isLoggedIn?: boolean;
@@ -23,7 +24,7 @@ export default function Header(_props: HeaderProps = {}) {
   void _props;
 
   const [mounted, setMounted] = useState(false);
-  const [cartCount, setCartCount] = useState(1);
+  const [cartCount, setCartCount] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'signup'>('login');
@@ -39,7 +40,8 @@ export default function Header(_props: HeaderProps = {}) {
   const safeisAuthenticated = mounted ? isAuthenticated : false;
   
   const dispatch = useDispatch<AppDispatch>();
-  
+  const router = useRouter();
+
   const handleOpenAuthModal = (tab: 'login' | 'signup' = 'login') => {
     setAuthModalTab(tab);
     setIsAuthModalOpen(true);
@@ -70,6 +72,14 @@ export default function Header(_props: HeaderProps = {}) {
     setCartCount(cartCount + 1);
   };
 
+  const handleCartClick = () => {
+    if (!safeisAuthenticated) {
+      handleOpenAuthModal('login');
+      return;
+    }
+
+    router.push('/cart');
+  }
 
   type Visibility = 'always' | 'guest' | 'user' | 'admin';
 
@@ -171,15 +181,19 @@ export default function Header(_props: HeaderProps = {}) {
             }
 
             {/* Favorite */}
-            <div className="relative" onClick={safeisAuthenticated ? addToCart : () => handleOpenAuthModal('login')}>
+            {/* <div className="relative" onClick={safeisAuthenticated ? addToCart : () => handleOpenAuthModal('login')}>
               <button className="flex gap-2 text-amber-900 rounded-lg font-semibold hover:bg-yellow-50 transition-colors text-sm sm:text-base">
                 <LucideHeart className="my-auto font-bold text-lg"/>
               </button>
-            </div>
+            </div> */}
 
             {/* Cart */}
-            {safeUser?.role !=='admin' && (<div className="relative" onClick={safeisAuthenticated ? addToCart : () => handleOpenAuthModal('login')  }>
-              <button className="flex gap-2 text-amber-900 rounded-lg font-semibold hover:bg-yellow-50 transition-colors text-sm sm:text-base">
+            {safeUser?.role !=='admin' && (
+            <div className="relative">
+              <button 
+                onClick={handleCartClick}
+                className="flex gap-2 text-amber-900 rounded-lg font-semibold hover:bg-yellow-50 transition-colors text-sm sm:text-base"
+              >
                 <LucideShoppingCart className="my-auto font-bold text-lg" />
                 {cartCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center">

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-	
+
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
 )
 
@@ -120,10 +120,10 @@ func (ur *UserRepository) GetUserIdFromRefreshToken(token string) (int, error) {
 	var userId int
 	err := ur.db.QueryRow("SELECT user_id FROM refresh_tokens WHERE token=$1", token).Scan(&userId)
 	if err != nil {
-		return -1, err;
+		return -1, err
 	}
 
-	return userId, nil;
+	return userId, nil
 }
 
 func (ur *UserRepository) SaveRefreshToken(userID int, token string, expiresAt time.Time) error {

@@ -22,13 +22,13 @@ type ProductResponse struct {
 	Name         string    `json:"name"`
 	Description  string    `json:"description"`
 	Benefits     string    `json:"benefits"`
-	Price        float64   `json:"price"`
+	Price        float64   `json:"price,omitempty"`
 	SellingPrice float64   `json:"sellingPrice"`
 	OfferPrice   float64   `json:"offerPrice"`
 	ImageURL     string    `json:"image_url"`
 	ImagePath    string    `json:"image_path"`
 	Category     *Category `json:"category"`
-	Quantity     int       `json:"quantity"`
+	Quantity     int       `json:"quantity,omitempty"`
 	CreatedBy    int       `json:"createdBy"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
