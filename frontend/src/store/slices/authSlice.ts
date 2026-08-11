@@ -22,6 +22,8 @@ export interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
+  isAuthModalOpen: boolean;
+  authModalTab: 'login' | 'signup';
 }
 
 const initialState: AuthState = {
@@ -29,6 +31,8 @@ const initialState: AuthState = {
   isLoading: false,
   isAuthenticated: false,
   error: null,
+  isAuthModalOpen: false,
+  authModalTab: 'login',
 };
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -85,6 +89,13 @@ const authSlice = createSlice({
       state.isAuthenticated = !!action.payload.user;
       state.error = null;
     },
+    openAuthModal: (state, action: PayloadAction<'login' | 'signup' | undefined>) => {
+      state.isAuthModalOpen = true;
+      state.authModalTab = action.payload ?? 'login';
+    },
+    closeAuthModal: (state) => {
+      state.isAuthModalOpen = false;
+    },
   },
   extraReducers: (builder) => {
     // Signup handlers
@@ -140,9 +151,11 @@ const authSlice = createSlice({
         state.user = null;
         state.isAuthenticated = false;
         state.error = null;
+        state.isAuthModalOpen = false;
+        state.authModalTab = 'login';
       });
   },
 });
 
-export const { clearError, clearAuth, hydrateAuth } = authSlice.actions;
+export const { clearError, clearAuth, hydrateAuth, openAuthModal, closeAuthModal } = authSlice.actions;
 export default authSlice.reducer;
