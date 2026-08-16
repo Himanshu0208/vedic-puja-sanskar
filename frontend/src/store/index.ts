@@ -3,6 +3,7 @@ import authReducer from '@/store/slices/authSlice';
 import sidebarReducer from '@/store/slices/sidebarSlice';
 import productReducer from '@/store/slices/productSlice';
 import categoryReducer from '@/store/slices/categorySlice';
+import orderReducer from '@/store/slices/orderSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     sidebar: sidebarReducer,
     product: productReducer,
     category: categoryReducer,
+    order: orderReducer,
   },
 });
 console.log("STORE CREATED");

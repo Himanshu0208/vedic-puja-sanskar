@@ -1,5 +1,34 @@
+'use client';
+
+import { getAllCategories } from "@/store/slices/categorySlice";
+import { getAllProducts } from "@/store/slices/productSlice";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/store";
+import { ProductCardUser } from "@/components/common/ProductCardUser";
+import { decreaseQuantity, fetchCart, increaseQuantity } from "@/store/slices/orderSlice";
 
 export default function Home() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { category } = useSelector((state: RootState) => state.category);
+  const { products } = useSelector((state: RootState) => state.product);
+
+  useEffect(() => {
+    dispatch(getAllCategories());
+    dispatch(getAllProducts());
+    dispatch(fetchCart());
+  }, []);
+
+  const increaseInCart = (productId : number) => {
+    console.log('Increase in cart');
+    dispatch(increaseQuantity(productId));
+  }
+
+  const decreaseInCart = (productId : number) => {
+    console.log('Decrease in cart');
+    dispatch(decreaseQuantity(productId));
+  }
+
   return (
   <>
     {/* Hero Section */}
@@ -29,35 +58,13 @@ export default function Home() {
           Featured Products
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* {products.map((product) => (
-            <div
-            key={product.id}
-            className="bg-gradient-to-br from-yellow-50 to-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 border-yellow-100 overflow-hidden"
-            >
-            <div className="bg-yellow-100 p-6 sm:p-8 text-center text-4xl sm:text-5xl md:text-6xl">
-            {product.image}
-            </div>
-            <div className="p-4 sm:p-6">
-            <h4 className="text-base sm:text-lg font-bold text-amber-900 mb-2 line-clamp-2">
-            {product.name}
-            </h4>
-            <p className="text-amber-700 text-xs sm:text-sm mb-4 line-clamp-2">
-            {product.description}
-            </p>
-            <div className="flex justify-between items-center gap-2">
-            <span className="text-xl sm:text-2xl font-bold text-amber-600">
-            ₹{product.price}
-            </span>
-            <button
-            onClick={addToCart}
-            className="bg-amber-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold hover:bg-amber-700 transition-colors duration-200 text-xs sm:text-sm"
-            >
-            Add
-            </button>
-            </div>
-            </div>
-            </div>
-            ))} */}
+          {
+            products.map((product) => (
+              <ProductCardUser 
+                key={product.id}
+                product={product}
+              />
+            ))}
         </div>
       </div>
     </section>

@@ -148,6 +148,7 @@ const authSlice = createSlice({
     builder
       .addCase(logout.fulfilled, (state) => {
         removeStoredItem('userData');
+        removeStoredItem('cart');
         state.user = null;
         state.isAuthenticated = false;
         state.error = null;

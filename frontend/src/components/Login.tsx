@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, clearError } from '@/store/slices/authSlice';
 import { AppDispatch, RootState } from '@/store';
+import { fetchCart} from '@/store/slices/orderSlice';
 
 interface LoginProps {
   onClose: () => void;
@@ -48,6 +49,7 @@ export default function Login({ onClose, onSwitchToSignup }: LoginProps) {
       onClose();
       setEmail('');
       setPassword('');
+      dispatch(fetchCart());
     } else {
       // Dismiss loading toast and show error
       toast.dismiss(loadingToast);

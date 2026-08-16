@@ -12,19 +12,7 @@ import { CategoryListResponse } from '@/types/category';
 import { getAllCategories } from '@/store/slices/categorySlice';
 import { deleteProduct, getAllProducts } from '@/store/slices/productSlice';
 
-const getProductImage = (imagePath: string) => {
-  if (!imagePath) {
-    return 'https://via.placeholder.com/200';
-  }
-
-  if (imagePath.startsWith('http')) {
-    return imagePath;
-  }
-
-  const url = `${process.env.NEXT_PUBLIC_IMAGE_URL ?? ''}${imagePath}`;
-  console.log("image url: [", url, "]");
-  return url;
-};
+import { getProductImage } from '@/utils/pathResolution';
 
 export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null);
