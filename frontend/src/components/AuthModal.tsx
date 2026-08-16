@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Login from './Login';
 import Signup from './Signup';
 
@@ -12,6 +12,12 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose, initialTab = 'login' }: AuthModalProps) {
   const [currentTab, setCurrentTab] = useState<'login' | 'signup'>(initialTab);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentTab(initialTab);
+    }
+  }, [initialTab, isOpen]);
 
   if (!isOpen) return null;
 

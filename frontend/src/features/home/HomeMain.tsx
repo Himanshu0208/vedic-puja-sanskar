@@ -4,11 +4,10 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
-import { logout } from '@/store/slices/authSlice';
+import { logout, openAuthModal } from '@/store/slices/authSlice';
 
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import AuthModal from '@/components/AuthModal';
 
 import Hero from './Hero';
 import ProductsGrid from './ProductsGrid';
@@ -24,18 +23,9 @@ const initialProducts = [
 
 export default function HomeMain() {
   const [cartCount, setCartCount] = useState(0);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'signup'>('login');
 
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
-
-  const handleOpenAuthModal = (tab: 'login' | 'signup' = 'login') => {
-    setAuthModalTab(tab);
-    setIsAuthModalOpen(true);
-  };
-
-  const handleCloseAuthModal = () => setIsAuthModalOpen(false);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -44,7 +34,7 @@ export default function HomeMain() {
 
   const addToCart = (productId: number) => {
     if (!isAuthenticated) {
-      handleOpenAuthModal('login');
+      dispatch(openAuthModal('login'));
       return;
     }
     setCartCount((c) => c + 1);
@@ -55,7 +45,6 @@ export default function HomeMain() {
     <div className="min-h-screen bg-white">
       <Header
         isLoggedIn={isAuthenticated}
-        onToggleAuth={() => handleOpenAuthModal('login')}
         cartCount={cartCount}
         userEmail={user?.email}
         onLogout={handleLogout}
@@ -73,8 +62,6 @@ export default function HomeMain() {
       <Newsletter />
 
       <Footer />
-
-      <AuthModal isOpen={isAuthModalOpen} onClose={handleCloseAuthModal} initialTab={authModalTab} />
     </div>
   );
 }

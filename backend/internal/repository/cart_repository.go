@@ -88,7 +88,7 @@ func (r *CartRepository) RemoveFromCart(userID int, productID int, quantity int)
 		return fmt.Errorf("cannot remove more items than exist in cart")
 	}
 
-	if existingQuantity == 1 {
+	if existingQuantity == 1 || existingQuantity == quantity || quantity == -1 {
 		if _, err = r.db.Exec("DELETE FROM cart WHERE user_id = $1 AND product_id = $2", userID, productID); err != nil {
 			return fmt.Errorf("failed to delete cart item: %w", err)
 		}

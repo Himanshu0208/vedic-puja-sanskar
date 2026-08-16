@@ -2,11 +2,12 @@ package dto
 
 type AddItemToCartRequest struct {
 	ProductID int `json:"productId" validate:"required"`
-	Quantity  int `json:"quantity" validate:"required,min=1"`
+	Quantity  int `json:"quantity" validate:"required"`
 }
 
-type CartItemRemoveRequest struct {
+type RemoveItemFromCartRequest struct {
 	ProductID int `json:"productId" validate:"required"`
+	Quantity  int `json:"quantity" validate:"required"`
 }
 
 type CartResponse struct {
@@ -18,11 +19,11 @@ type CartResponse struct {
 }
 
 type CartItem struct {
-	ProductID       int     `json:"productId"`
-	ProductImageURL string  `json:"productImageURL"`
-	ProductName     string  `json:"productName"`
+	ProductID          int     `json:"productId"`
+	ProductImageURL    string  `json:"productImageURL"`
+	ProductName        string  `json:"productName"`
 	ProductDescription string  `json:"productDescription"`
-	Quantity        int     `json:"quantity"`
-	Price           float64 `json:"price"`
-	DiscountedPrice float64 `json:"discountedPrice"`
+	Quantity           int     `json:"quantity"`
+	Price              float64 `json:"price"`
+	DiscountedPrice    float64 `json:"discountedPrice"`
 }

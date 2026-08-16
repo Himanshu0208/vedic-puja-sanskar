@@ -3,18 +3,17 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { LucideUserPen, LucideLogIn, LucideSearch, LucideShoppingCart, LucideMenu, LucideX, LucideBellRing, LucideHeart, LucidePhone, LucideTruck, LucidePackage, LucideUser, LucideLayoutDashboard } from 'lucide-react';
+import { LucideUserPen, LucideLogIn, LucideSearch, LucideShoppingCart, LucideMenu, LucideX, LucideBellRing, LucidePhone, LucideTruck, LucidePackage, LucideUser, LucideLayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
 
 import { RootState, AppDispatch } from '@/store';
-import { logout } from '@/store/slices/authSlice';
+import { closeAuthModal, logout, openAuthModal } from '@/store/slices/authSlice';
 import { toggleSidebar } from '@/store/slices/sidebarSlice';
 import AuthModal from '@/components/AuthModal';
 import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   isLoggedIn?: boolean;
-  onToggleAuth?: () => void;
   cartCount?: number;
   userEmail?: string;
   onLogout?: () => void;
@@ -26,15 +25,13 @@ export default function Header(_props: HeaderProps = {}) {
   const [mounted, setMounted] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
     setMounted(true);
   }, [])
   
   // Redux selectors
-  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { user, isAuthenticated, isAuthModalOpen, authModalTab } = useSelector((state: RootState) => state.auth);
   
   const safeUser = mounted ? user : null;
   const safeisAuthenticated = mounted ? isAuthenticated : false;
@@ -42,13 +39,8 @@ export default function Header(_props: HeaderProps = {}) {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
 
-  const handleOpenAuthModal = (tab: 'login' | 'signup' = 'login') => {
-    setAuthModalTab(tab);
-    setIsAuthModalOpen(true);
-  };
-
   const handleCloseAuthModal = () => {
-    setIsAuthModalOpen(false);
+    dispatch(closeAuthModal());
   };
 
   const handleLogoutClick = () => {
@@ -66,7 +58,7 @@ export default function Header(_props: HeaderProps = {}) {
 
   const addToCart = () => {
     if (!safeisAuthenticated) {
-      handleOpenAuthModal('login');
+      dispatch(openAuthModal('login'));
       return;
     }
     setCartCount(cartCount + 1);
@@ -74,7 +66,7 @@ export default function Header(_props: HeaderProps = {}) {
 
   const handleCartClick = () => {
     if (!safeisAuthenticated) {
-      handleOpenAuthModal('login');
+      dispatch(openAuthModal('login'));
       return;
     }
 
@@ -163,7 +155,7 @@ export default function Header(_props: HeaderProps = {}) {
               </div>
             ) : (
               <button
-                onClick={() => handleOpenAuthModal('login')}
+                onClick={() => dispatch(openAuthModal('login'))}
                 className="hidden sm:flex gap-2 bg-amber-600 text-white px-1 sm:px-3 py-1.5 sm:py-1 rounded-lg font-semibold hover:bg-amber-700 transition-colors duration-200 text-sm sm:text-base"
               >
                 <LucideLogIn className="my-auto font-bold text-xl" />
