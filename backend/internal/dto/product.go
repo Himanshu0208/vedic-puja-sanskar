@@ -28,7 +28,7 @@ type ProductResponse struct {
 	ImageURL     string    `json:"image_url"`
 	ImagePath    string    `json:"image_path"`
 	Category     *Category `json:"category"`
-	Quantity     int       `json:"quantity,omitempty"`
+	Quantity     int       `json:"quantity"`
 	CreatedBy    int       `json:"createdBy"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`

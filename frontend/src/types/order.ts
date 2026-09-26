@@ -39,6 +39,7 @@ export interface ShippingAddress {
 
 export interface CreateOrderRequest {
   paymentMethod: 'razorpay' | 'cod';
+  productId?: number;
   shippingAddressId?: number;
   shippingAddress?: ShippingAddress;
 }

@@ -1,9 +1,14 @@
 package server
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/db"
@@ -29,6 +34,8 @@ type Server struct {
 	orderService    *service.OrderService
 	dbConn          *db.Connection
 	validate        *validator.Validate // ✅ central validator
+	requestLogger   *slog.Logger
+	logFile         *os.File
 }
 
 func New(cfg config.Config) (*Server, error) {
@@ -36,6 +43,11 @@ func New(cfg config.Config) (*Server, error) {
 	dbConn, err := db.NewConnection(cfg.Database.URL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init db: %w", err)
+	}
+	requestLogger, logFile, err := openRequestLog()
+	if err != nil {
+		_ = dbConn.DB.Close()
+		return nil, fmt.Errorf("failed to open request log: %w", err)
 	}
 
 	// Repositories
@@ -73,6 +85,8 @@ func New(cfg config.Config) (*Server, error) {
 		orderService:    orderService,
 		dbConn:          dbConn,
 		validate:        validate,
+		requestLogger:   requestLogger,
+		logFile:         logFile,
 	}
 
 	server.httpServer = &http.Server{
@@ -111,6 +125,11 @@ func (s *Server) setupRoutes() http.Handler {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, `{"status":"ok"}`)
 	})
+	productReadHandler := http.NewServeMux()
+	productReadHandler.HandleFunc("/api/v1/products", productHandler.GetAllProducts)
+	productReadHandler.HandleFunc("/api/v1/products/get", productHandler.GetProductByID)
+	mux.Handle("/api/v1/products", middleware.OptionalAuthMiddleware(s.authService)(productReadHandler))
+	mux.Handle("/api/v1/products/get", middleware.OptionalAuthMiddleware(s.authService)(productReadHandler))
 
 	// ---------------- PROTECTED ROUTES ----------------
 
@@ -119,8 +138,6 @@ func (s *Server) setupRoutes() http.Handler {
 	protectedMux.HandleFunc("/api/v1/auth/profile", authHandler.GetProfile)
 
 	// product protected actions
-	protectedMux.HandleFunc("/api/v1/products", productHandler.GetAllProducts)
-	protectedMux.HandleFunc("/api/v1/products/get", productHandler.GetProductByID)
 	protectedMux.HandleFunc("/api/v1/products/create", productHandler.CreateProduct)
 	protectedMux.HandleFunc("/api/v1/products/update", productHandler.UpdateProduct)
 	protectedMux.HandleFunc("/api/v1/products/delete", productHandler.DeleteProduct)
@@ -141,7 +158,7 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.Handle("/api/v1/", protectedHandler)
 
 	// CORS
-	return middleware.CORSMiddleware(mux)
+	return middleware.RequestLoggingMiddleware(middleware.CORSMiddleware(mux), s.requestLogger)
 }
 
 // ---------------- SERVER CONTROL ----------------
@@ -153,7 +170,28 @@ func (s *Server) Start() error {
 
 func (s *Server) Stop() error {
 	log.Println("Stopping server...")
-	return s.httpServer.Close()
+	serverErr := s.httpServer.Close()
+	fileErr := s.logFile.Close()
+	return errors.Join(serverErr, fileErr)
+}
+
+func openRequestLog() (*slog.Logger, *os.File, error) {
+	// ponytail: append-only for local use; add rotation when retention or volume requires it.
+	const logPath = "logs/backend.log"
+	if err := os.MkdirAll(filepath.Dir(logPath), 0700); err != nil {
+		return nil, nil, err
+	}
+	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := file.Chmod(0600); err != nil {
+		_ = file.Close()
+		return nil, nil, err
+	}
+	writer := io.MultiWriter(os.Stdout, file)
+	logger := slog.New(slog.NewJSONHandler(writer, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	return logger, file, nil
 }
 
 func (s *Server) Wait() <-chan error {

@@ -11,7 +11,10 @@ import { clearCart, fetchCart, increaseQuantity, decreaseQuantity, removeItemFro
 import { ProductCartCard } from '@/components/common/ProductCartCard';
 import { orderService } from '@/services/api/orderService';
 import type { CreateOrderResponse, SavedAddress, ShippingAddress } from '@/types/order';
-import { loadRazorpay, type RazorpaySuccess, type RazorpayFailure } from '@/utils/razorpay';
+import { loadRazorpay, type RazorpaySuccess } from '@/utils/razorpay';
+import { productService } from '@/services/api/productService';
+import type { ProductResponse } from '@/types/product';
+import { getProductImage } from '@/utils/pathResolution';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', minimumFractionDigits: 2,
@@ -21,6 +24,9 @@ export default function CartPage() {
   const { cart, isLoading, error } = useSelector((state: RootState) => state.order);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const dispatch = useDispatch<AppDispatch>();
+  const [buyNowProductId, setBuyNowProductId] = useState<number | null>(null);
+  const [buyNowProduct, setBuyNowProduct] = useState<ProductResponse | null>(null);
+  const [buyNowLoading, setBuyNowLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [completedOrderId, setCompletedOrderId] = useState<number | null>(null);
@@ -33,13 +39,24 @@ export default function CartPage() {
 
   useEffect(() => { dispatch(fetchCart()); }, [dispatch]);
   useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('buyNow'));
+    if (!Number.isSafeInteger(id) || id < 1) return;
+    setBuyNowProductId(id);
+    setBuyNowLoading(true);
+    productService.getProductById(String(id))
+      .then(setBuyNowProduct)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Could not load this product.'))
+      .finally(() => setBuyNowLoading(false));
+  }, []);
+  useEffect(() => {
     if (!isAuthenticated) return;
     void orderService.getAddresses().then((addresses) => {
       setSavedAddresses(addresses);
-      if (addresses.length) {
-        setSelectedAddressId(addresses[0].id);
-        setShipping(addresses[0]);
-      }
+      const params = new URLSearchParams(window.location.search);
+      const requestedId = Number(params.get('addressId')) || null;
+      const address = addresses.find((item) => item.id === requestedId) ?? (params.get('newAddress') === '1' ? undefined : addresses[0]);
+      setSelectedAddressId(address?.id ?? null);
+      if (address) setShipping(address);
     }).catch((err) => toast.error(err instanceof Error ? err.message : 'Could not load saved addresses.'));
   }, [isAuthenticated]);
 
@@ -55,7 +72,7 @@ export default function CartPage() {
         razorpayPaymentId: payment.razorpay_payment_id,
         razorpaySignature: payment.razorpay_signature,
       });
-      dispatch(clearCart());
+      if (!buyNowProductId) dispatch(clearCart());
       setPendingVerification(null);
       setCompletedOrderId(order.orderId);
     } catch (paymentError) {
@@ -71,9 +88,9 @@ export default function CartPage() {
       if (paymentMethod === 'razorpay' && !(await loadRazorpay())) {
         throw new Error('Could not load Razorpay Checkout. Please try again.');
       }
-      const order = await orderService.createOrder({ paymentMethod, ...(selectedAddressId ? { shippingAddressId: selectedAddressId } : { shippingAddress: shipping }) });
+      const order = await orderService.createOrder({ paymentMethod, ...(buyNowProductId ? { productId: buyNowProductId } : {}), ...(selectedAddressId ? { shippingAddressId: selectedAddressId } : { shippingAddress: shipping }) });
       if (paymentMethod === 'cod') {
-        dispatch(clearCart());
+        if (!buyNowProductId) dispatch(clearCart());
         setCompletedOrderId(order.orderId);
         return;
       }
@@ -110,7 +127,9 @@ export default function CartPage() {
     setShipping((current) => ({ ...current, [name]: value }));
   };
 
-  const subtotal = cart?.items.reduce((sum, item) => {
+  const subtotal = buyNowProduct
+    ? ((buyNowProduct.offerPrice ?? 0) > 0 && (buyNowProduct.offerPrice ?? 0) < buyNowProduct.sellingPrice ? buyNowProduct.offerPrice ?? 0 : buyNowProduct.sellingPrice)
+    : cart?.items.reduce((sum, item) => {
     const price = item.discountedPrice > 0 && item.discountedPrice < item.price ? item.discountedPrice : item.price;
     return sum + price * item.quantity;
   }, 0) || 0;
@@ -128,7 +147,9 @@ export default function CartPage() {
 
   if (isLoading) return <div className="flex min-h-[50vh] items-center justify-center p-8 text-stone-600">Loading your cart…</div>;
   if (error) return <div className="flex min-h-[50vh] flex-col items-center justify-center p-8"><h1 className="mb-2 text-3xl font-bold">Could not load cart</h1><p className="text-red-600">{error}</p></div>;
-  if (!cart || cart.items.length === 0) {
+  if (buyNowLoading) return <div className="flex min-h-[50vh] items-center justify-center p-8 text-stone-600">Loading checkout…</div>;
+  if (buyNowProductId && !buyNowProduct) return <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center"><p className="text-stone-700">This item can’t be checked out right now.</p><Link href="/" className="mt-4 text-amber-800 underline">Back to the collection</Link></div>;
+  if (!buyNowProduct && (!cart || cart.items.length === 0)) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
         <ShoppingCart className="mb-6 h-20 w-20 text-stone-300" />
@@ -142,10 +163,10 @@ export default function CartPage() {
   const inputClass = 'mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-700/15';
   return (
     <div className="container mx-auto px-4 py-8 sm:py-12">
-      <h1 className="mb-8 font-serif text-3xl text-stone-900 sm:text-4xl">Your shopping cart</h1>
+      <h1 className="mb-8 font-serif text-3xl text-stone-900 sm:text-4xl">{buyNowProduct ? 'Buy now' : 'Your shopping cart'}</h1>
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          {cart.items.map((item) => <ProductCartCard key={item.productId} item={item} onIncrease={handleIncreaseQuantity} onDecrease={handleDecreaseQuantity} onRemove={handleRemoveItem} />)}
+          {buyNowProduct ? <article className="flex gap-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm"><img src={getProductImage(buyNowProduct.image_url)} alt="" className="h-24 w-24 rounded-xl object-cover"/><div className="min-w-0"><p className="text-xs font-medium uppercase tracking-wide text-amber-800">Buy now</p><h2 className="mt-1 font-semibold text-stone-900">{buyNowProduct.name}</h2><p className="mt-2 font-medium text-stone-700">{formatPrice(subtotal)}</p></div></article> : cart?.items.map((item) => <ProductCartCard key={item.productId} item={item} onIncrease={handleIncreaseQuantity} onDecrease={handleDecreaseQuantity} onRemove={handleRemoveItem} />)}
         </div>
         <form onSubmit={handleCheckout} className="space-y-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6 lg:sticky lg:top-24">
           <section>
@@ -185,7 +206,7 @@ export default function CartPage() {
           </section>
 
           <div className="space-y-3 border-t border-stone-100 pt-5 text-sm">
-            <div className="flex justify-between text-stone-600"><span>Items ({cart.items.length})</span><span>{formatPrice(subtotal)}</span></div>
+            <div className="flex justify-between text-stone-600"><span>Items ({buyNowProduct ? 1 : cart?.items.length ?? 0})</span><span>{formatPrice(subtotal)}</span></div>
             <div className="flex justify-between border-t border-stone-100 pt-3 text-lg font-bold text-stone-900"><span>Total</span><span>{formatPrice(subtotal)}</span></div>
           </div>
           {pendingVerification && (
