@@ -82,6 +82,14 @@ func (s *OrderService) RequestReturn(userID, orderID int) error {
 	return s.orderRepo.RequestReturn(userID, orderID)
 }
 
+func (s *OrderService) GetAdminOrders() ([]dto.AdminOrder, error) {
+	return s.orderRepo.GetAdminOrders()
+}
+
+func (s *OrderService) GetAdminReport() (*dto.AdminReport, error) {
+	return s.orderRepo.GetAdminReport()
+}
+
 func (s *OrderService) VerifyPayment(ctx context.Context, userID, orderID int, req dto.VerifyPaymentRequest) (*dto.VerifyPaymentResponse, error) {
 	payment, err := s.orderRepo.GetPaymentForVerification(userID, orderID)
 	if err != nil {

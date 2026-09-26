@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import toast from 'react-hot-toast';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
 import { logout, openAuthModal } from '@/store/slices/authSlice';
@@ -29,7 +28,6 @@ export default function HomeMain() {
 
   const handleLogout = () => {
     dispatch(logout());
-    toast.success('Logged out successfully!');
   };
 
   const addToCart = (productId: number) => {
@@ -38,7 +36,6 @@ export default function HomeMain() {
       return;
     }
     setCartCount((c) => c + 1);
-    toast.success('Added to cart');
   };
 
   return (

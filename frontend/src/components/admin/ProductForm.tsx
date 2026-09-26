@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { LucideX, LucideUpload } from 'lucide-react';
+import { ArrowRight, ImagePlus, LoaderCircle, LucideX, TrendingUp, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { CreateProductInput, ProductResponse, UpdateProductInput, DeleteProductResponse, ProductListResponse } from '@/types/product';
+import { CreateProductInput, ProductResponse } from '@/types/product';
 import { AppDispatch, RootState } from '@/store';
 import { createProduct, updateProduct } from '@/store/slices/productSlice';
 
@@ -25,6 +25,11 @@ interface ProductFormProps {
   onClose: () => void;
   product: ProductResponse | null
 }
+
+const fieldClass = 'w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-60';
+const labelClass = 'mb-1.5 block text-sm font-medium text-stone-700';
+const money = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
+const errorMessage = (error: unknown, fallback: string) => typeof error === 'string' ? error : error instanceof Error ? error.message : fallback;
 
 export default function ProductForm({
   onClose,
@@ -49,6 +54,9 @@ export default function ProductForm({
   const [imagePreview, setImagePreview] = useState<string>(product?.image_url ?? '');
   const [errors, setErrors] = useState<Partial<Record<keyof ProductFormData, string>>>({});
   const selectedCategoryId = formData.categoryId;
+  const effectivePrice = formData.offerPrice > 0 && formData.offerPrice < formData.sellingPrice ? formData.offerPrice : formData.sellingPrice;
+  const expectedEarnings = effectivePrice - formData.costPrice;
+  const earningsMargin = effectivePrice > 0 ? (expectedEarnings / effectivePrice) * 100 : 0;
 
   const dispatch = useDispatch<AppDispatch>();
   const {category, isCategoryLoading} = useSelector((state: RootState) => state.category);
@@ -65,23 +73,21 @@ export default function ProductForm({
 
     if(isEditMode && product) {
       try {
-        const result = await dispatch(updateProduct({productId: product.id, productData: formData}));
-        toast.success('Product updated successfully');
+        await dispatch(updateProduct({productId: product.id, productData: formData})).unwrap();
         onClose();
       } catch (error) {
         console.error('Error submitting form:', error);
-        toast.error(error instanceof Error ? error.message : 'Failed to create product');
+        toast.error(errorMessage(error, 'Failed to update product'));
       } finally {
         setIsLoading(false);
       }
     } else {
       try {
-        const result = await dispatch(createProduct(formData));
-        toast.success('Product created successfully');
+        await dispatch(createProduct(formData)).unwrap();
         onClose();
       } catch (error) {
         console.error('Error submitting form:', error);
-        toast.error(error instanceof Error ? error.message : 'Failed to create product');
+        toast.error(errorMessage(error, 'Failed to create product'));
       } finally {
         setIsLoading(false);
       }
@@ -110,8 +116,11 @@ export default function ProductForm({
     if (!formData.costPrice || formData.costPrice <= 0) {
       newErrors.costPrice = 'Valid cost price is required';
     }
-    if (formData.costPrice > formData.sellingPrice) {
+    if (formData.costPrice >= formData.sellingPrice) {
       newErrors.sellingPrice = 'Selling price must be greater than cost price';
+    }
+    if (formData.offerPrice && formData.offerPrice <= formData.costPrice) {
+      newErrors.offerPrice = 'Offer price must be greater than cost price';
     }
     if (formData.offerPrice && formData.offerPrice > formData.sellingPrice) {
       newErrors.offerPrice = 'Offer price must be less than or equal to selling price';
@@ -180,25 +189,26 @@ export default function ProductForm({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-stone-950/45 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => event.target === event.currentTarget && !isLoading && onClose()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="product-form-title" className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-amber-100 bg-white shadow-2xl shadow-stone-950/20 sm:max-h-[calc(100dvh-3rem)]">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky z-10 top-0 bg-white">
-          <h2 className="text-2xl font-bold text-gray-900">Create New Product</h2>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-amber-100 bg-gradient-to-r from-amber-100 via-orange-50 to-rose-50 px-5 py-4 sm:px-7">
+          <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/80 text-amber-800 shadow-sm"><ImagePlus size={19}/></span><div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-800">Catalog</p><h2 id="product-form-title" className="mt-0.5 text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">{isEditMode ? 'Edit catalog item' : 'Add catalog item'}</h2></div></div>
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+            aria-label="Close product form"
+            className="grid h-9 w-9 place-items-center rounded-xl text-stone-500 transition hover:bg-white/80 hover:text-stone-900 disabled:opacity-50"
           >
-            <LucideX size={24} />
+            <LucideX size={19} />
           </button>
         </div> 
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 overflow-y-auto p-5 sm:space-y-6 sm:p-7">
           {/* Image Upload */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className={labelClass}>
               Product Image <span className="text-red-600">*</span>
             </label>
             <div className="relative">
@@ -212,14 +222,14 @@ export default function ProductForm({
               />
               <label
                 htmlFor="image-input"
-                className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                className="flex h-44 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50/60 transition hover:border-amber-500 hover:from-amber-100 hover:to-orange-100"
               >
                 {imagePreview ? (
                   <div className="relative w-full h-full group">
                     <img
                       src={imagePreview}
                       alt="Preview"
-                      className="w-full h-full object-cover rounded-lg"
+                      className="h-full w-full rounded-2xl object-cover"
                     />
                     <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition-colors flex items-center justify-center">
                       <span className="text-white z-10 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
@@ -229,19 +239,19 @@ export default function ProductForm({
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8">
-                    <LucideUpload size={32} className="text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600 font-medium">Click to upload image</p>
-                    <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 5MB</p>
+                    <span className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-white text-amber-800 shadow-sm"><Upload size={20}/></span>
+                    <p className="text-sm font-semibold text-stone-800">Click to upload an image</p>
+                    <p className="mt-1 text-xs text-stone-500">PNG, JPG, GIF up to 5MB</p>
                   </div>
                 )}
               </label>
             </div>
-            {errors.image && <p className="text-red-600 text-sm mt-1">{errors.image}</p>}
+            {errors.image && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.image}</p>}
           </div>
 
           {/* Name */}
           <div>
-            <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="name" className={labelClass}>
               Product Name <span className="text-red-600">*</span>
             </label>
             <input
@@ -252,15 +262,15 @@ export default function ProductForm({
               onChange={handleInputChange}
               disabled={isLoading}
               placeholder="e.g., Rudraksha Mala"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-gray-100 disabled:opacity-50"
+              className={fieldClass}
             />
-            {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
+            {errors.name && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.name}</p>}
           </div>
 
           {/* Category and Quantity Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="categoryId" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="categoryId" className={labelClass}>
                 Category <span className="text-red-600">*</span>
               </label>
               <select
@@ -269,7 +279,7 @@ export default function ProductForm({
                 value={selectedCategoryId}
                 onChange={handleInputChange}
                 disabled={isLoading || isCategoryLoading || categories?.categories.length === 0}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-gray-100 disabled:opacity-50"
+                className={fieldClass}
               >
                 {isCategoryLoading && (
                   <option value={0}>Loading categories...</option>
@@ -283,11 +293,11 @@ export default function ProductForm({
                   </option>
                 ))}
               </select>
-              {errors.categoryId && <p className="text-red-600 text-sm mt-1">{errors.categoryId}</p>}
+              {errors.categoryId && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.categoryId}</p>}
             </div>
 
             <div>
-              <label htmlFor="quantity" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="quantity" className={labelClass}>
                 Quantity <span className="text-red-600">*</span>
               </label>
               <input
@@ -300,15 +310,15 @@ export default function ProductForm({
                 placeholder="Enter quantity"
                 step="0.01"
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-gray-100 disabled:opacity-50"
+                className={fieldClass}
               />
-              {errors.quantity && <p className="text-red-600 text-sm mt-1">{errors.quantity}</p>}
+              {errors.quantity && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.quantity}</p>}
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="description" className={labelClass}>
               Description <span className="text-red-600">*</span>
             </label>
             <textarea
@@ -319,14 +329,14 @@ export default function ProductForm({
               disabled={isLoading}
               placeholder="Enter product description"
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-gray-100 disabled:opacity-50 resize-none"
+              className={`${fieldClass} resize-y`}
             />
-            {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description}</p>}
+            {errors.description && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.description}</p>}
           </div>
 
           {/* Benefits */}
           <div>
-            <label htmlFor="benefits" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="benefits" className={labelClass}>
               Health Benefits <span className="text-red-600">*</span>
             </label>
             <textarea
@@ -337,15 +347,15 @@ export default function ProductForm({
               disabled={isLoading}
               placeholder="Enter health benefits (separate by commas or newlines)"
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-gray-100 disabled:opacity-50 resize-none"
+              className={`${fieldClass} resize-y`}
             />
-            {errors.benefits && <p className="text-red-600 text-sm mt-1">{errors.benefits}</p>}
+            {errors.benefits && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.benefits}</p>}
           </div>
 
           {/* Cost Price, Selling Price, and Offer Price Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="costPrice" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="costPrice" className={labelClass}>
                 Cost Price (₹) <span className="text-red-600">*</span>
               </label>
               <input
@@ -358,13 +368,13 @@ export default function ProductForm({
                 placeholder="Enter cost price"
                 step="0.01"
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-gray-100 disabled:opacity-50"
+                className={fieldClass}
               />
-              {errors.costPrice && <p className="text-red-600 text-sm mt-1">{errors.costPrice}</p>}
+              {errors.costPrice && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.costPrice}</p>}
             </div>
 
             <div>
-              <label htmlFor="sellingPrice" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="sellingPrice" className={labelClass}>
                 Selling Price (₹) <span className="text-red-600">*</span>
               </label>
               <input
@@ -377,15 +387,15 @@ export default function ProductForm({
                 placeholder="Enter selling price"
                 step="0.01"
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-gray-100 disabled:opacity-50"
+                className={fieldClass}
               />
               {errors.sellingPrice && (
-                <p className="text-red-600 text-sm mt-1">{errors.sellingPrice}</p>
+                <p className="mt-1.5 text-xs font-medium text-red-600">{errors.sellingPrice}</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="offerPrice" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="offerPrice" className={labelClass}>
                 Offer Price (₹)
               </label>
               <input
@@ -398,65 +408,36 @@ export default function ProductForm({
                 placeholder="Optional offer price"
                 step="0.01"
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600 disabled:bg-gray-100 disabled:opacity-50"
+                className={fieldClass}
               />
-              {errors.offerPrice && <p className="text-red-600 text-sm mt-1">{errors.offerPrice}</p>}
+              {errors.offerPrice && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.offerPrice}</p>}
             </div>
           </div>
 
           {/* Price Breakdown Display */}
-          <div className="space-y-2">
-            {formData.costPrice && formData.sellingPrice && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm text-gray-700">
-                  <span className="font-semibold">Profit Margin:</span>{' '}
-                  <span className="text-green-600 font-bold">
-                    ₹{(formData.sellingPrice - formData.costPrice).toFixed(2)} (
-                    {(
-                      (formData.sellingPrice - formData.costPrice) /
-                        formData.costPrice *
-                      100
-                    ).toFixed(1)}
-                    %)
-                  </span>
-                </p>
-              </div>
-            )}
+          {formData.costPrice > 0 && formData.sellingPrice > 0 && <div className="flex flex-col justify-between gap-3 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm"><TrendingUp size={18}/></span><div><p className="text-sm font-semibold text-emerald-950">Estimated earnings after offer</p><p className="mt-0.5 text-xs text-emerald-800/80">{money(effectivePrice)} sale price − {money(formData.costPrice)} cost price, per item</p><p className="mt-1 text-[10px] text-emerald-800/65">Before payment, shipping, and other expenses</p></div></div>
+            <div className="sm:text-right"><p className={`text-xl font-bold ${expectedEarnings >= 0 ? 'text-emerald-800' : 'text-red-700'}`}>{money(expectedEarnings)}</p><p className="text-xs text-emerald-800/80">{earningsMargin.toFixed(1)}% margin</p></div>
+          </div>}
 
-            {formData.offerPrice && formData.sellingPrice && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-gray-700">
-                  <span className="font-semibold">Discount:</span>{' '}
-                  <span className="text-red-600 font-bold">
-                    ₹{(formData.sellingPrice - formData.offerPrice).toFixed(2)} (
-                    {(
-                      (formData.sellingPrice - formData.offerPrice) /
-                        formData.sellingPrice *
-                      100
-                    ).toFixed(1)}
-                    %)
-                  </span>
-                </p>
-              </div>
-            )}
-          </div>
+          {formData.offerPrice > 0 && formData.sellingPrice > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950"><span className="font-semibold">Customer discount:</span> {money(formData.sellingPrice - formData.offerPrice)} ({(((formData.sellingPrice - formData.offerPrice) / formData.sellingPrice) * 100).toFixed(1)}%) off the listed selling price</div>}
 
           {/* Buttons */}
-          <div className="flex gap-3 pt-4">
+          <div className="sticky bottom-0 -mx-5 -mb-5 flex gap-3 border-t border-stone-100 bg-white/95 px-5 py-4 backdrop-blur sm:-mx-7 sm:-mb-7 sm:px-7">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="flex-1 rounded-xl border border-stone-200 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-800 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-900 disabled:opacity-50"
             >
-              {isLoading ? 'Creating...' : 'Create Product'}
+              {isLoading ? <><LoaderCircle size={16} className="animate-spin"/>{isEditMode ? 'Saving…' : 'Creating…'}</> : <>{isEditMode ? 'Save changes' : 'Add to catalog'}<ArrowRight size={16}/></>}
             </button>
           </div>
         </form>
@@ -464,4 +445,3 @@ export default function ProductForm({
     </div>
   );
 }
-

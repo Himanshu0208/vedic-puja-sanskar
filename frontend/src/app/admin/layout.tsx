@@ -1,10 +1,9 @@
 'use client';
 
-import AdminSideBar from '@/components/admin/AdminSideBar';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AdminLayout({
   children,
@@ -13,23 +12,24 @@ export default function AdminLayout({
 }) {
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     // Redirect if not authenticated or not admin
-    if (!isAuthenticated || user?.role !== 'admin') {
+    if (mounted && (!isAuthenticated || user?.role !== 'admin')) {
       router.push('/');
     }
-  }, [isAuthenticated, user?.role, router]);
+  }, [mounted, isAuthenticated, user?.role, router]);
+
+  if (!mounted || !isAuthenticated || user?.role !== 'admin') {
+    return <div className="grid min-h-[55vh] place-items-center text-sm text-stone-500">Loading admin workspace…</div>;
+  }
 
   return (
-    <div className="min-h-screen flex bg-amber-50 p-4 sm:p-6 lg:p-8">
-      <main className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Products</h1>
-          <p className="text-gray-600">Manage your product inventory</p>
-        </div>
-        {children}
-      </main>
+    <div className="min-h-screen bg-[#f7f7f5] px-4 py-7 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1440px]">{children}</div>
     </div>
   );
 }

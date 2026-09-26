@@ -259,6 +259,95 @@ func (r *OrderRepository) RequestReturn(userID, orderID int) error {
 	return nil
 }
 
+func (r *OrderRepository) GetAdminOrders() ([]dto.AdminOrder, error) {
+	rows, err := r.db.Query(`SELECT o.id,u.email,o.status,COALESCE(p.status,'unknown'),COALESCE(p.method,'unknown'),o.total_amount,o.currency,o.created_at
+		FROM orders o JOIN users u ON u.id=o.user_id LEFT JOIN payments p ON p.order_id=o.id
+		ORDER BY o.created_at DESC LIMIT 100`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	orders := make([]dto.AdminOrder, 0)
+	for rows.Next() {
+		var order dto.AdminOrder
+		if err := rows.Scan(&order.OrderID, &order.CustomerEmail, &order.Status, &order.PaymentStatus, &order.PaymentMethod, &order.TotalAmount, &order.Currency, &order.CreatedAt); err != nil {
+			return nil, err
+		}
+		order.PaymentMethod = strings.ToLower(order.PaymentMethod)
+		orders = append(orders, order)
+	}
+	return orders, rows.Err()
+}
+
+func (r *OrderRepository) GetAdminReport() (*dto.AdminReport, error) {
+	report := &dto.AdminReport{MonthlyRevenue: make([]dto.MonthlyRevenue, 0, 6), OrderStatuses: make([]dto.OrderStatusCount, 0)}
+	err := r.db.QueryRow(`SELECT
+		(SELECT COUNT(*) FROM users WHERE is_admin=false),
+		(SELECT COUNT(*) FROM products),
+		COUNT(o.id), COUNT(o.id) FILTER (WHERE p.status='success'),
+		COUNT(o.id) FILTER (WHERE p.method='COD'),
+		COUNT(o.id) FILTER (WHERE p.method='RAZORPAY'),
+		COUNT(o.id) FILTER (WHERE o.status='CANCELLED'),
+		COUNT(o.id) FILTER (WHERE o.status='RTO' OR o.return_status='RETURN_COMPLETED'),
+		COUNT(o.id) FILTER (WHERE p.id IS NULL),
+		COUNT(o.id) FILTER (WHERE o.status='PENDING_PAYMENT'),
+		COUNT(o.id) FILTER (WHERE o.status='DELIVERED'),
+		COALESCE(SUM(p.amount) FILTER (WHERE p.status='success'),0),
+		COALESCE(SUM(p.amount) FILTER (WHERE p.status='success' AND p.method='COD'),0),
+		COALESCE(SUM(p.amount) FILTER (WHERE p.status='success' AND p.method='RAZORPAY'),0),
+		COALESCE(SUM(o.total_amount) FILTER (WHERE p.method='COD' AND p.status='pending' AND o.status NOT IN ('CANCELLED','RTO') AND COALESCE(o.return_status,'') <> 'RETURN_COMPLETED'),0),
+		COUNT(o.id) FILTER (WHERE p.method='COD' AND p.status='pending' AND o.status NOT IN ('CANCELLED','RTO') AND COALESCE(o.return_status,'') <> 'RETURN_COMPLETED')
+		FROM orders o LEFT JOIN payments p ON p.order_id=o.id`).Scan(
+		&report.Customers, &report.Products, &report.Orders, &report.PaidOrders, &report.CODOrders, &report.RazorpayOrders,
+		&report.CancelledOrders, &report.ReturnedOrders, &report.OtherOrders, &report.PendingOrders, &report.DeliveredOrders, &report.Revenue,
+		&report.CODRevenue, &report.RazorpayRevenue,
+		&report.CODReceivable, &report.CODReceivableOrders)
+	if err != nil {
+		return nil, err
+	}
+	statusRows, err := r.db.Query(`SELECT order_status, COUNT(*)
+		FROM (
+			SELECT CASE
+				WHEN status='RTO' OR return_status='RETURN_COMPLETED' THEN 'RETURNED'
+				WHEN return_status IN ('RETURN_REQUESTED','RETURN_APPROVED','RETURN_PICKED') THEN 'RETURN_IN_PROGRESS'
+				ELSE status
+			END AS order_status
+			FROM orders
+		) AS order_states
+		GROUP BY order_status ORDER BY order_status`)
+	if err != nil {
+		return nil, err
+	}
+	defer statusRows.Close()
+	for statusRows.Next() {
+		var status dto.OrderStatusCount
+		if err := statusRows.Scan(&status.Status, &status.Count); err != nil {
+			return nil, err
+		}
+		report.OrderStatuses = append(report.OrderStatuses, status)
+	}
+	if err := statusRows.Err(); err != nil {
+		return nil, err
+	}
+	rows, err := r.db.Query(`SELECT TO_CHAR(months.month,'YYYY-MM'),COALESCE(SUM(p.amount) FILTER (WHERE p.status='success'),0)
+		FROM generate_series(date_trunc('month',NOW())-INTERVAL '5 months',date_trunc('month',NOW()),INTERVAL '1 month') AS months(month)
+		LEFT JOIN orders o ON date_trunc('month',o.created_at)=months.month
+		LEFT JOIN payments p ON p.order_id=o.id
+		GROUP BY months.month ORDER BY months.month`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var month dto.MonthlyRevenue
+		if err := rows.Scan(&month.Month, &month.Revenue); err != nil {
+			return nil, err
+		}
+		report.MonthlyRevenue = append(report.MonthlyRevenue, month)
+	}
+	return report, rows.Err()
+}
+
 func (r *OrderRepository) SaveRazorpayOrderID(paymentID int, razorpayOrderID string) error {
 	_, err := r.db.Exec("UPDATE payments SET razorpay_order_id = $1, updated_at = NOW() WHERE id = $2", razorpayOrderID, paymentID)
 	return err

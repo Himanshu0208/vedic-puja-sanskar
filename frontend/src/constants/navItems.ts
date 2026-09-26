@@ -10,7 +10,6 @@ import {
   LucideChartLine,
   LucidePackageCheck,
   LucideMessageCircleHeart,
-  LucideArrowLeftFromLine,
 } from 'lucide-react';
 
 export const headerNavItems = [
@@ -24,7 +23,7 @@ export const headerNavItems = [
 export const adminNavItems = [
   { label: 'Dashboard', icon: LucideLayoutDashboard, link: '/admin/dashboard' },
   { label: 'Users', icon: LucideUsers, link: '/admin/users' },
-  { label: 'Products', icon: LucidePackagePlus, link: '/admin/products' },
+  { label: 'Catalog', icon: LucidePackagePlus, link: '/admin/products' },
   { label: 'Reports', icon: LucideChartLine, link: '/admin/reports' },
   { label: 'Orders', icon: LucidePackageCheck, link: '/admin/orders' },
   { label: 'Feedbacks', icon: LucideMessageCircleHeart, link: '/admin/feedbacks' },
