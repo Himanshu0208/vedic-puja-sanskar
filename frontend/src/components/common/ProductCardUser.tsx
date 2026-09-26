@@ -40,26 +40,26 @@ export const ProductCardUser = ({
   return (
     <div
       key={product.id}
-      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+      className="group overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
     >
       {/* Image */}
-      <div className="h-48 bg-gray-200 overflow-hidden">
+      <div className="h-52 overflow-hidden bg-[#f5f0e7]">
         <img
           src={getProductImage(product.image_url)}
           alt={product.name}
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
       </div>
 
       {/* Content */}
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+      <div className="p-5">
+        <h3 className="mb-3 line-clamp-2 text-lg font-semibold text-stone-900">
           {product.name}
         </h3>
 
         {/* Category and Rating */}
         <div className="flex justify-between items-center mb-3">
-          <span className="text-sm bg-amber-100 text-amber-800 px-2 py-1 rounded">
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
             {product.category.name}
           </span>
           <div className="flex items-center gap-1">
@@ -136,7 +136,7 @@ export const ProductCardUser = ({
             </>
           )}
 
-          {isAuthenticated && !isAdmin && inCart && (
+          {isAuthenticated && inCart && (
             <div className="inline-flex w-full gap-10 items-center rounded-full bg-gray-100 p-1 shadow-inner ring-1 ring-gray-200">
               <button
                 type="button"

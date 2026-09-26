@@ -78,7 +78,7 @@ export default function Header(_props: HeaderProps = {}) {
   const navItems = [
     { label: 'Contact Us',  icon: LucidePhone,   visibleTo: ['always'],         showOn: 'both', link: '#' },
     { label: 'Track Order', icon: LucideTruck,   visibleTo: ['guest'],  showOn: 'both', link: '#' },
-    { label: 'My Orders',   icon: LucidePackage, visibleTo: ['guest'],           showOn: 'both', link: '#' },
+    { label: 'My Orders',   icon: LucidePackage, visibleTo: ['user', 'admin'],   showOn: 'both', link: '/orders' },
     { label: 'Dashboard',   icon: LucideLayoutDashboard,  visibleTo: ['admin'],          showOn: 'both', link: '#' },
     { label: 'Profile',     icon: LucideUser,    visibleTo: ['user', 'admin'],  showOn: 'mobile', link: '#' },
     { label: 'Login',       icon: LucideLogIn,   visibleTo: ['guest'],          showOn: 'mobile', link: '#' },
