@@ -152,6 +152,7 @@ func (s *ProductService) GetAllProducts(role string) (*dto.ProductListResponse, 
 			ImageURL:     product.ImageURL,
 			ImagePath:    product.ImagePath,
 			Category:     categoryDTO,
+			Quantity:     product.Quantity,
 			CreatedBy:    product.CreatedBy,
 			CreatedAt:    product.CreatedAt,
 			UpdatedAt:    product.UpdatedAt,
@@ -191,6 +192,7 @@ func (s *ProductService) GetProductByID(id int, userID int, role string, isAutho
 		ImageURL:     product.ImageURL,
 		ImagePath:    product.ImagePath,
 		Category:     categoryDTO,
+		Quantity:     product.Quantity,
 		CreatedBy:    product.CreatedBy,
 		CreatedAt:    product.CreatedAt,
 		UpdatedAt:    product.UpdatedAt,
@@ -198,7 +200,6 @@ func (s *ProductService) GetProductByID(id int, userID int, role string, isAutho
 
 	if isAuthorized && role == "admin" {
 		response.Price = product.Price
-		response.Quantity = product.Quantity
 	}
 
 	return response, nil

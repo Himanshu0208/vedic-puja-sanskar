@@ -37,35 +37,55 @@ func (r *OrderRepository) CreateFromCart(userID int, req dto.OrderRequest) (*mod
 	}
 	defer tx.Rollback()
 
-	rows, err := tx.Query(`
-		SELECT ci.product_id, p.name, ci.quantity, p.quantity, p.selling_price, p.offer_price
-		FROM cart ci JOIN products p ON p.id = ci.product_id
-		WHERE ci.user_id = $1 ORDER BY ci.created_at, ci.product_id
-		FOR UPDATE OF ci, p`, userID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("load cart for checkout: %w", err)
-	}
 	items := make([]checkoutItem, 0)
-	for rows.Next() {
+	if req.ProductID != nil {
 		var item checkoutItem
-		if err := rows.Scan(&item.productID, &item.name, &item.quantity, &item.stock, &item.price, &item.payPrice); err != nil {
-			rows.Close()
+		err = tx.QueryRow(`SELECT id, name, quantity, selling_price, offer_price FROM products WHERE id=$1 FOR UPDATE`, *req.ProductID).Scan(
+			&item.productID, &item.name, &item.stock, &item.price, &item.payPrice)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, errors.New("product not found")
+		}
+		if err != nil {
 			return nil, nil, err
 		}
-		if item.quantity < 1 || item.quantity > item.stock {
-			rows.Close()
+		item.quantity = 1
+		if item.stock < item.quantity {
 			return nil, nil, fmt.Errorf("insufficient stock for %s", item.name)
 		}
 		if item.payPrice <= 0 || item.payPrice >= item.price {
 			item.payPrice = item.price
 		}
 		items = append(items, item)
-	}
-	if err := rows.Err(); err != nil {
+	} else {
+		rows, err := tx.Query(`
+		SELECT ci.product_id, p.name, ci.quantity, p.quantity, p.selling_price, p.offer_price
+		FROM cart ci JOIN products p ON p.id = ci.product_id
+		WHERE ci.user_id = $1 ORDER BY ci.created_at, ci.product_id
+		FOR UPDATE OF ci, p`, userID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("load cart for checkout: %w", err)
+		}
+		for rows.Next() {
+			var item checkoutItem
+			if err := rows.Scan(&item.productID, &item.name, &item.quantity, &item.stock, &item.price, &item.payPrice); err != nil {
+				rows.Close()
+				return nil, nil, err
+			}
+			if item.quantity < 1 || item.quantity > item.stock {
+				rows.Close()
+				return nil, nil, fmt.Errorf("insufficient stock for %s", item.name)
+			}
+			if item.payPrice <= 0 || item.payPrice >= item.price {
+				item.payPrice = item.price
+			}
+			items = append(items, item)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, nil, err
+		}
 		rows.Close()
-		return nil, nil, err
 	}
-	rows.Close()
 	if len(items) == 0 {
 		return nil, nil, errors.New("your cart is empty")
 	}
@@ -140,7 +160,7 @@ func (r *OrderRepository) CreateFromCart(userID int, req dto.OrderRequest) (*mod
 	if err != nil {
 		return nil, nil, fmt.Errorf("create payment: %w", err)
 	}
-	if method == models.PaymentMethodCOD {
+	if method == models.PaymentMethodCOD && req.ProductID == nil {
 		if _, err := tx.Exec("DELETE FROM cart WHERE user_id = $1", userID); err != nil {
 			return nil, nil, fmt.Errorf("clear ordered cart: %w", err)
 		}

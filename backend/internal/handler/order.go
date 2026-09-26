@@ -48,6 +48,10 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "provide either shippingAddressId or shippingAddress")
 		return
 	}
+	if req.ProductID != nil && *req.ProductID < 1 {
+		utils.WriteError(w, http.StatusBadRequest, "invalid product id")
+		return
+	}
 	if req.ShippingAddress != nil {
 		if err := h.validate.Struct(req.ShippingAddress); err != nil {
 			utils.WriteError(w, http.StatusBadRequest, err.Error())
@@ -69,6 +73,9 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 			status = http.StatusConflict
 		}
 		if strings.Contains(err.Error(), "saved address not found") {
+			status = http.StatusNotFound
+		}
+		if strings.Contains(err.Error(), "product not found") {
 			status = http.StatusNotFound
 		}
 		utils.WriteError(w, status, err.Error())

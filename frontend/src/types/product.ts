@@ -18,13 +18,13 @@ export interface ProductResponse {
   name: string;
   description: string;
   benefits: string;
-  price: number;
+  price?: number;
   sellingPrice: number;
   offerPrice?: number;
   image_url: string;
   image_path: string;
   category: CategoryResponse;
-  quantity: number;
+  quantity?: number;
   createdBy: number;
   createdAt: string;
   updatedAt: string;

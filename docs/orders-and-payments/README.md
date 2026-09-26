@@ -193,10 +193,11 @@ Request:
 For an address already returned by `GET /api/v1/addresses`, send its ID instead of the address object:
 
 ```json
-{ "paymentMethod": "cod", "shippingAddressId": 7 }
+{ "paymentMethod": "cod", "shippingAddressId": 7, "productId": 42 }
 ```
 
 Exactly one of `shippingAddress` and `shippingAddressId` is required. A new address is saved to the account as part of order creation and can be selected at the next checkout. A saved ID is only usable by its owner.
+`productId` is optional. When present, checkout orders one unit of that product without changing the user's cart; when omitted, checkout orders the cart contents.
 
 | Request field | Required | Purpose |
 |---|---:|---|

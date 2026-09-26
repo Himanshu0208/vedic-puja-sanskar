@@ -1,5 +1,6 @@
 import { useDispatch } from "react-redux";
-import { LucideEdit2, LucideStar, LucideTrash2, Minus, Plus } from "lucide-react";
+import { ArrowRight, LucideEdit2, LucideTrash2, Minus, Plus } from "lucide-react";
+import Link from 'next/link';
 
 import { getProductImage } from "@/utils/pathResolution";
 import { ProductResponse } from "@/types/product";
@@ -43,34 +44,23 @@ export const ProductCardUser = ({
       className="group overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
     >
       {/* Image */}
-      <div className="h-52 overflow-hidden bg-[#f5f0e7]">
+      <Link href={`/products/${product.id}`} aria-label={`View ${product.name} details`} className="block h-52 overflow-hidden bg-[#f5f0e7]">
         <img
           src={getProductImage(product.image_url)}
           alt={product.name}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
-      </div>
+      </Link>
 
       {/* Content */}
       <div className="p-5">
-        <h3 className="mb-3 line-clamp-2 text-lg font-semibold text-stone-900">
-          {product.name}
-        </h3>
+        <Link href={`/products/${product.id}`} className="mb-3 block line-clamp-2 text-lg font-semibold text-stone-900 transition hover:text-amber-800">{product.name}</Link>
 
         {/* Category and Rating */}
-        <div className="flex justify-between items-center mb-3">
-          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
-            {product.category.name}
-          </span>
-          <div className="flex items-center gap-1">
-            <LucideStar size={16} className="text-yellow-400 fill-yellow-400" />
-            <span className="text-sm font-semibold">
-              {
-                // product.rating
-                0
-              }
+          <div className="mb-3 flex items-center">
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
+              {product.category.name}
             </span>
-          </div>
         </div>
 
         {/* Price and Stock */}
@@ -106,13 +96,7 @@ export const ProductCardUser = ({
           {product.description}
         </p>
 
-        {/* Benefits */}
-        <div className="mb-3 p-2 bg-green-50 rounded">
-          <p className="text-xs text-green-800 font-semibold mb-1">Benefits:</p>
-          <p className="text-xs text-green-700 line-clamp-2">
-            {product.benefits}
-          </p>
-        </div>
+        <Link href={`/products/${product.id}`} className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-800 transition hover:text-amber-950">View full details <ArrowRight size={15}/></Link>
 
         {/* Actions */}
         <div className="flex gap-2 w-full justify-between">
@@ -168,7 +152,7 @@ export const ProductCardUser = ({
               <button
                 type="button"
                 onClick={() => isAuthenticated ? onIncreaseInCart(product.id) : dispatch(openAuthModal('login'))}
-                aria-label={`Decrease ${product.name} quantity`}
+                aria-label={`Add ${product.name} to cart`}
                 className="flex-1 text-center text-sm font-semibold text-white bg-amber-600 px-3 py-2 rounded-lg hover:bg-amber-700 transition-colors"
               >
                 Add To Cart

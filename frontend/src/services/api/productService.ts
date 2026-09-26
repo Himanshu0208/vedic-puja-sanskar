@@ -100,7 +100,7 @@ class ProductService {
 
     async getProductById(productId: string) {
         try {
-            const response = await axiosInstance.get<ProductResponse>(`/products/${productId}`);
+            const response = await axiosInstance.get<ProductResponse>(`/products/get?id=${productId}`);
             return response.data;
         }
         catch (error: unknown) {

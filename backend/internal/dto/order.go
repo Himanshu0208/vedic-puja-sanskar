@@ -15,6 +15,7 @@ type ShippingAddress struct {
 
 type OrderRequest struct {
 	PaymentMethod     string           `json:"paymentMethod" validate:"required,oneof=razorpay cod"`
+	ProductID         *int             `json:"productId"`
 	ShippingAddressID *int             `json:"shippingAddressId"`
 	ShippingAddress   *ShippingAddress `json:"shippingAddress"`
 }
