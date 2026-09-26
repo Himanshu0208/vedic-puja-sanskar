@@ -95,6 +95,7 @@ func (s *Server) setupRoutes() http.Handler {
 	categoryHandler := handler.NewCategoryHandler(s.categoryService, s.validate)
 	cartHandler := handler.NewCartHandler(s.cartService, s.validate)
 	orderHandler := handler.NewOrderHandler(s.orderService, s.validate)
+	adminHandler := handler.NewAdminHandler(s.authService, s.orderService)
 
 	// ---------------- PUBLIC ROUTES ----------------
 
@@ -131,6 +132,9 @@ func (s *Server) setupRoutes() http.Handler {
 	protectedMux.HandleFunc("/api/v1/orders", orderHandler.Orders)
 	protectedMux.HandleFunc("/api/v1/orders/", orderHandler.OrderAction)
 	protectedMux.HandleFunc("/api/v1/addresses", orderHandler.GetAddresses)
+	protectedMux.HandleFunc("/api/v1/admin/users", adminHandler.Users)
+	protectedMux.HandleFunc("/api/v1/admin/orders", adminHandler.Orders)
+	protectedMux.HandleFunc("/api/v1/admin/reports", adminHandler.Reports)
 	// wrap with auth middleware
 	protectedHandler := middleware.AuthMiddleware(s.authService)(protectedMux)
 

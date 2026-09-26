@@ -58,7 +58,6 @@ export default function CartPage() {
       dispatch(clearCart());
       setPendingVerification(null);
       setCompletedOrderId(order.orderId);
-      toast.success('Payment received and order placed.');
     } catch (paymentError) {
       toast.error(`Payment confirmation is pending. Retry verification before paying again. ${paymentError instanceof Error ? paymentError.message : ''}`);
     }
@@ -76,7 +75,6 @@ export default function CartPage() {
       if (paymentMethod === 'cod') {
         dispatch(clearCart());
         setCompletedOrderId(order.orderId);
-        toast.success('Your COD order has been placed.');
         return;
       }
 

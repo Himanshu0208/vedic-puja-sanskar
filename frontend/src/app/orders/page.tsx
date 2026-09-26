@@ -52,7 +52,7 @@ export default function OrdersPage() {
         theme: { color: '#92400e' },
         handler: (payment: RazorpaySuccess) => {
           void orderService.verifyPayment(order.orderId, { razorpayOrderId: payment.razorpay_order_id, razorpayPaymentId: payment.razorpay_payment_id, razorpaySignature: payment.razorpay_signature })
-            .then(async () => { toast.success('Payment received. Your order is confirmed.'); await refreshOrders(); })
+            .then(async () => { await refreshOrders(); })
             .catch((err) => toast.error(err instanceof Error ? err.message : 'Payment confirmation is pending.'))
             .finally(() => setBusyOrderId(null));
         },
@@ -70,14 +70,14 @@ export default function OrdersPage() {
   const cancelOrder = async (orderId: number) => {
     if (!window.confirm(`Cancel order #${orderId}? This will cancel every item in the order.`)) return;
     setBusyOrderId(orderId);
-    try { await orderService.cancelOrder(orderId); await refreshOrders(); toast.success('Order cancelled.'); }
+    try { await orderService.cancelOrder(orderId); await refreshOrders(); }
     catch (err) { toast.error(err instanceof Error ? err.message : 'Could not cancel this order.'); }
     finally { setBusyOrderId(null); }
   };
 
   const requestReturn = async (orderId: number) => {
     setBusyOrderId(orderId);
-    try { await orderService.requestReturn(orderId); await refreshOrders(); toast.success('Return request submitted.'); }
+    try { await orderService.requestReturn(orderId); await refreshOrders(); }
     catch (err) { toast.error(err instanceof Error ? err.message : 'Could not submit the return request.'); }
     finally { setBusyOrderId(null); }
   };

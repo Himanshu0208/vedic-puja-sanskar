@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
 )
 
@@ -113,6 +114,30 @@ func (ur *UserRepository) GetAllUsers() ([]*models.User, error) {
 		users = append(users, user)
 	}
 
+	return users, rows.Err()
+}
+
+func (ur *UserRepository) GetAdminUsers() ([]dto.AdminUser, error) {
+	rows, err := ur.db.Query(`SELECT u.id,u.email,u.is_admin,u.created_at,COUNT(o.id)
+		FROM users u LEFT JOIN orders o ON o.user_id=u.id
+		GROUP BY u.id ORDER BY u.created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	users := make([]dto.AdminUser, 0)
+	for rows.Next() {
+		var user dto.AdminUser
+		var isAdmin bool
+		if err := rows.Scan(&user.ID, &user.Email, &isAdmin, &user.CreatedAt, &user.OrderCount); err != nil {
+			return nil, err
+		}
+		user.Role = "user"
+		if isAdmin {
+			user.Role = "admin"
+		}
+		users = append(users, user)
+	}
 	return users, rows.Err()
 }
 

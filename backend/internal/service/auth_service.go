@@ -31,7 +31,7 @@ func NewAuthService(userRepo *repository.UserRepository, tokenManager *jwt.Token
 	if err != nil {
 		panic(fmt.Sprintf("Invalid refresh token expiry duration: %v", err))
 	}
-	
+
 	return &AuthService{
 		userRepo:           userRepo,
 		tokenManager:       tokenManager,
@@ -73,7 +73,7 @@ func (s *AuthService) Signup(req *dto.SignupRequest) (*dto.AuthResponse, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
-	
+
 	if err := s.SaveRefreshToken(refreshToken, savedUser.ID); err != nil {
 		return nil, fmt.Errorf("Unable to Save auth token")
 	}
@@ -129,11 +129,11 @@ func (s *AuthService) Login(req *dto.LoginRequest) (*dto.AuthResponse, error) {
 func (s *AuthService) RefreshToken(refreshToken string, claims *jwt.Claims) (*dto.AuthResponse, error) {
 	userId, err := s.userRepo.GetUserIdFromRefreshToken(refreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get userID, login again");
+		return nil, fmt.Errorf("failed to get userID, login again")
 	}
 
 	if userId != claims.UserID {
-		return nil, fmt.Errorf("bsdk apne baap ko mt sikha");
+		return nil, fmt.Errorf("bsdk apne baap ko mt sikha")
 	}
 
 	accessToken, err := s.tokenManager.GenerateToken(claims.UserID, claims.Email, string(claims.Role), s.acessTokenExpiry)
@@ -145,7 +145,7 @@ func (s *AuthService) RefreshToken(refreshToken string, claims *jwt.Claims) (*dt
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
-	
+
 	if err := s.userRepo.DeleteRefreshTokenByToken(refreshToken); err != nil {
 		return nil, fmt.Errorf("Unable to delete previous token: %w", err)
 	}
@@ -172,5 +172,9 @@ func (s *AuthService) VerifyToken(tokenString string) (*jwt.Claims, error) {
 func (s *AuthService) SaveRefreshToken(token string, userId int) error {
 	expiredAt := time.Now().Add(time.Duration(s.refreshTokenExpiry) * 24 * time.Hour)
 
-	return s.userRepo.SaveRefreshToken(userId, token, expiredAt);
+	return s.userRepo.SaveRefreshToken(userId, token, expiredAt)
+}
+
+func (s *AuthService) GetAdminUsers() ([]dto.AdminUser, error) {
+	return s.userRepo.GetAdminUsers()
 }
