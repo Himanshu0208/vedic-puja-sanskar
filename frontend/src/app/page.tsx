@@ -6,129 +6,108 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
 import { ProductCardUser } from "@/components/common/ProductCardUser";
-import { decreaseQuantity, fetchCart, increaseQuantity } from "@/store/slices/orderSlice";
+import { fetchCart } from "@/store/slices/orderSlice";
+import { ArrowDown, ArrowRight, BadgeCheck, Heart, PackageCheck } from "lucide-react";
 
 export default function Home() {
   const dispatch = useDispatch<AppDispatch>();
-  const { category } = useSelector((state: RootState) => state.category);
   const { products } = useSelector((state: RootState) => state.product);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
   useEffect(() => {
     dispatch(getAllCategories());
     dispatch(getAllProducts());
-    dispatch(fetchCart());
-  }, []);
-
-  const increaseInCart = (productId : number) => {
-    console.log('Increase in cart');
-    dispatch(increaseQuantity(productId));
-  }
-
-  const decreaseInCart = (productId : number) => {
-    console.log('Decrease in cart');
-    dispatch(decreaseQuantity(productId));
-  }
+    if (isAuthenticated) dispatch(fetchCart());
+  }, [dispatch, isAuthenticated]);
 
   return (
-  <>
-    {/* Hero Section */}
-    <section className="bg-linear-to-b from-yellow-50 via-white to-white py-12 sm:py-20 px-4">
-      <div className="max-w-7xl mx-auto text-center">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-amber-900 mb-4 sm:mb-6">
-          Experience Sacred Spirituality
-        </h2>
-        <p className="text-base sm:text-lg md:text-xl text-amber-700 mb-6 sm:mb-8 max-w-2xl mx-auto px-2">
-          Authentic Rudraksh, traditional Malas, and complete Puja Path essentials for your spiritual journey
-        </p>
-        <div className="flex gap-3 sm:gap-4 justify-center flex-wrap">
-          <button className="bg-amber-600 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-bold text-base sm:text-lg hover:bg-amber-700 transition-colors duration-200">
-            🛍️ Shop Now
-          </button>
-          <button className="bg-white text-amber-600 border-2 border-amber-600 px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-bold text-base sm:text-lg hover:bg-yellow-50 transition-colors duration-200">
-            📖 Learn More
-          </button>
+    <>
+      <section className="relative isolate overflow-hidden bg-[#fbf5e9] px-5 py-20 sm:py-28">
+        <div aria-hidden="true" className="absolute -right-24 -top-32 -z-10 h-96 w-96 rounded-full border border-amber-900/10 sm:right-8 sm:top-8 sm:h-[34rem] sm:w-[34rem]" />
+        <div aria-hidden="true" className="absolute -right-12 -top-20 -z-10 h-72 w-72 rounded-full border border-amber-900/10 sm:right-20 sm:top-20 sm:h-[28rem] sm:w-[28rem]" />
+        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.2fr_.8fr]">
+          <div className="max-w-2xl">
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-900/10 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[.18em] text-amber-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-600" /> A little more meaning in every ritual
+            </p>
+            <h1 className="font-[var(--font-geist-sans)] text-4xl font-semibold leading-[1.08] tracking-tight text-stone-900 sm:text-6xl lg:text-7xl">
+              Make space for <span className="font-serif italic text-amber-800">the sacred.</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
+              Thoughtfully chosen Rudraksha, malas, and puja essentials to bring a little more intention to your everyday rituals.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-3">
+              <a href="#shop" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-amber-800 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
+                Explore the collection <ArrowRight size={17} />
+              </a>
+              <a href="#our-promise" className="inline-flex min-h-12 items-center gap-2 rounded-full px-5 text-sm font-semibold text-stone-700 transition hover:bg-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
+                Our promise <ArrowDown size={16} />
+              </a>
+            </div>
+            <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-stone-600">
+              <span className="inline-flex items-center gap-2"><BadgeCheck size={17} className="text-amber-800" /> Carefully selected</span>
+              <span className="inline-flex items-center gap-2"><PackageCheck size={17} className="text-amber-800" /> Packed with care</span>
+            </div>
+          </div>
+          <div className="relative mx-auto grid aspect-square w-full max-w-md place-items-center rounded-[2rem] bg-[#e9dcc3] shadow-[0_30px_80px_-35px_rgba(92,57,22,.45)]">
+            <div className="absolute inset-4 rounded-[1.5rem] border border-white/50" />
+            <div className="text-center">
+              <div className="text-8xl sm:text-9xl" aria-hidden="true">🕉️</div>
+              <p className="mt-5 font-serif text-2xl italic text-amber-950">Begin with intention</p>
+              <p className="mt-2 text-sm tracking-[.2em] text-amber-900/60">VEDIC PUJA SANSKAR</p>
+            </div>
+            <div className="absolute -bottom-5 left-5 rounded-2xl border border-amber-900/5 bg-white px-4 py-3 shadow-lg sm:left-8">
+              <p className="flex items-center gap-2 text-sm font-semibold text-stone-800"><Heart size={15} className="fill-amber-700 text-amber-700" /> Made for mindful living</p>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    {/* Featured Products */}
-    <section className="py-12 sm:py-20 px-4">
-      <div className="max-w-7xl mx-auto">
-        <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center mb-8 sm:mb-12">
-          Featured Products
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {
-            products.map((product) => (
-              <ProductCardUser 
-                key={product.id}
-                product={product}
-              />
+      <section id="shop" className="scroll-mt-24 px-5 py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-9 flex flex-col justify-between gap-3 sm:mb-12 sm:flex-row sm:items-end">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-amber-800">Chosen with care</p>
+              <h2 className="font-serif text-3xl text-stone-900 sm:text-4xl">Find your everyday sacred</h2>
+            </div>
+            <p className="max-w-sm text-sm leading-6 text-stone-500">Meaningful essentials for prayer, reflection, and the rituals that ground you.</p>
+          </div>
+          {products.length ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {products.map((product) => (
+                <ProductCardUser key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-amber-900/20 bg-[#fbf8f1] px-6 py-16 text-center">
+              <p className="font-serif text-2xl text-stone-800">A thoughtful collection is on its way</p>
+              <p className="mt-2 text-sm text-stone-500">Please check back soon.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section id="our-promise" className="bg-[#f8f3e9] px-5 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto mb-10 max-w-xl text-center">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-amber-800">A promise in every parcel</p>
+            <h2 className="font-serif text-3xl text-stone-900 sm:text-4xl">Grounded in what matters</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              ['✦', 'Selected with intention', 'Authentic spiritual essentials, sourced from people we trust.'],
+              ['↗', 'Care in every delivery', 'Your order is packed thoughtfully and sent securely to your door.'],
+              ['♡', 'Honest value', 'Meaningful pieces at considered prices, without compromising on care.'],
+            ].map(([icon, title, description]) => (
+              <article key={title} className="rounded-2xl border border-amber-900/5 bg-white p-7 sm:p-8">
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-amber-50 font-serif text-xl text-amber-800">{icon}</span>
+                <h3 className="mt-5 text-lg font-semibold text-stone-900">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-600">{description}</p>
+              </article>
             ))}
-        </div>
-      </div>
-    </section>
-
-    {/* Features Section */}
-    <section className="bg-linear-to-r from-yellow-100 to-yellow-50 py-12 sm:py-20 px-4">
-      <div className="max-w-7xl mx-auto">
-        <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center mb-8 sm:mb-12">
-          Why Choose Us?
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md text-center border-t-4 border-amber-600">
-            <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">✨</div>
-            <h4 className="text-lg sm:text-xl font-bold text-amber-900 mb-2">
-              100% Authentic
-            </h4>
-            <p className="text-amber-700 text-sm sm:text-base">
-              Genuine Rudraksh and sacred items sourced directly from trusted sources
-            </p>
-          </div>
-          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md text-center border-t-4 border-amber-600">
-            <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">🚚</div>
-            <h4 className="text-lg sm:text-xl font-bold text-amber-900 mb-2">
-              Fast Delivery
-            </h4>
-            <p className="text-amber-700 text-sm sm:text-base">
-              Quick and secure shipping to your doorstep with proper packaging
-            </p>
-          </div>
-          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md text-center border-t-4 border-amber-600">
-            <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">💝</div>
-            <h4 className="text-lg sm:text-xl font-bold text-amber-900 mb-2">
-              Best Prices
-            </h4>
-            <p className="text-amber-700 text-sm sm:text-base">
-              Affordable spiritual products without compromising on quality
-            </p>
           </div>
         </div>
-      </div>
-    </section>
-
-    {/* Newsletter Section */}
-    <section className="py-12 sm:py-20 px-4 bg-white">
-      <div className="max-w-4xl mx-auto text-center">
-        <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 mb-3 sm:mb-4">
-          Stay Connected
-        </h3>
-        <p className="text-amber-700 text-base sm:text-lg mb-6 sm:mb-8 px-2">
-          Subscribe for spiritual tips, new products, and exclusive offers
-        </p>
-        <div className="flex gap-2 flex-col sm:flex-row max-w-md mx-auto px-4">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            className="flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-yellow-300 focus:outline-none focus:border-amber-600 bg-yellow-50 text-sm sm:text-base"
-            />
-          <button className="bg-amber-600 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-bold hover:bg-amber-700 transition-colors duration-200 text-sm sm:text-base">
-            Subscribe
-          </button>
-        </div>
-      </div>
-    </section>
-
-  </>
-  );   
+      </section>
+    </>
+  );
 }

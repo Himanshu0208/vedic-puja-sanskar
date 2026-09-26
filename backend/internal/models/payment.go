@@ -19,16 +19,22 @@ const (
 )
 
 type Payment struct {
-	ID                 int
-	Method             PaymentMethod
-	Status             PaymentStatus
-	RazorpayOrderID    string
-	RazorpayPaymentID  string
-	RazorpaySignature  string
-	Amount             float64
-	Remarks            *string // nullable — sirf failure case mein set hoga
-	UserID             int
-	OrderID            int
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	ID                int
+	Method            PaymentMethod
+	Status            PaymentStatus
+	RazorpayOrderID   string
+	RazorpayPaymentID string
+	Amount            float64
+	UserID            int
+	OrderID           int
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type PendingPayment struct {
+	ID              int
+	Amount          float64
+	Currency        string
+	RazorpayOrderID string
+	Status          PaymentStatus
 }

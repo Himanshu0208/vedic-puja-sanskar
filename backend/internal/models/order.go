@@ -2,11 +2,10 @@ package models
 
 import "time"
 
-
 type OrderStatus string
 
 const (
-	OrderPending        OrderStatus = "PENDING"
+	OrderPendingPayment OrderStatus = "PENDING_PAYMENT"
 	OrderPlaced         OrderStatus = "PLACED"
 	OrderProcessing     OrderStatus = "PROCESSING"
 	OrderPacked         OrderStatus = "PACKED"
@@ -14,39 +13,46 @@ const (
 	OrderOutForDelivery OrderStatus = "OUT_FOR_DELIVERY"
 	OrderDelivered      OrderStatus = "DELIVERED"
 	OrderCancelled      OrderStatus = "CANCELLED"
-	OrderRTO            OrderStatus = "RTO" // Return to Origin — delivery fail hui
-	OrderOnHold         OrderStatus = "ON_HOLD"
+	OrderRTO            OrderStatus = "RTO"
 )
 
 type ReturnStatus string
 
 const (
-	ReturnRequested ReturnStatus = "RETURN_REQUESTED" // ye sirf tab set hoga jab order DELIVERED tha
+	ReturnRequested ReturnStatus = "RETURN_REQUESTED"
 	ReturnApproved  ReturnStatus = "RETURN_APPROVED"
 	ReturnPicked    ReturnStatus = "RETURN_PICKED"
 	ReturnCompleted ReturnStatus = "RETURN_COMPLETED"
 	ReturnRejected  ReturnStatus = "RETURN_REJECTED"
 )
 
-// Order table
 type Order struct {
-	ID             int
-	UserID         int
-	Status         OrderStatus
-	ReturnStatus   *ReturnStatus // nullable — sirf return/refund case mein set hoga
-	TotalPrice     float64
-	DiscountAmount float64
-	CreatedAt      time.Time
-	updatedAt      time.Time
+	ID                 int
+	UserID             int
+	Status             OrderStatus
+	ReturnStatus       *ReturnStatus
+	SubtotalAmount     float64
+	DiscountAmount     float64
+	TotalAmount        float64
+	Currency           string
+	ShippingFullName   string
+	ShippingPhone      string
+	ShippingLine1      string
+	ShippingLine2      string
+	ShippingCity       string
+	ShippingState      string
+	ShippingPostalCode string
+	ShippingCountry    string
+	CreatedAt          time.Time
 }
 
-// OrderItem table
 type OrderItem struct {
-	ID              int
-	OrderID         int
-	ProductID       int
-	Quantity        int
-	Price           float64
-	DiscountedPrice float64
-	CreatedAt       time.Time
+	ID                  int
+	OrderID             int
+	ProductID           int
+	ProductName         string
+	Quantity            int
+	UnitPrice           float64
+	DiscountedUnitPrice float64
+	CreatedAt           time.Time
 }

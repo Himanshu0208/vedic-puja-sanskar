@@ -1,4 +1,4 @@
-CREATE TYPE IF NOT EXISTS order_status AS ENUM ('placed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned');
+CREATE TYPE order_status AS ENUM ('placed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned');
 
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,

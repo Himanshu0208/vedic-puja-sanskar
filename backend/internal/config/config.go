@@ -11,6 +11,12 @@ type Config struct {
 	JWT      JWTConfig
 	Database DatabaseConfig
 	Auth     AuthConfig
+	Razorpay RazorpayConfig
+}
+
+type RazorpayConfig struct {
+	KeyID  string
+	Secret string
 }
 
 // AuthConfig holds authentication-related configuration
@@ -69,6 +75,10 @@ func Load() Config {
 			DefaultDevAdminPassword: getEnv("DEFAULT_DEV_ADMIN_PASSWORD", "Dev@123"),
 			DefaultDevUserEmail:     getEnv("DEFAULT_DEV_USER_EMAIL", "dev-user@vedic-puja.com"),
 			DefaultDevUserPassword:  getEnv("DEFAULT_DEV_USER_PASSWORD", "Dev@123"),
+		},
+		Razorpay: RazorpayConfig{
+			KeyID:  getEnv("RAZORPAY_KEY_ID", ""),
+			Secret: getEnv("RAZORPAY_KEY_SECRET", ""),
 		},
 	}
 }

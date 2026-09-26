@@ -27,6 +27,7 @@ func (r *CartRepository) GetCartItemsByUserID(userID int) ([]*dto.CartItem, erro
 		FROM cart ci
 		JOIN products p ON ci.product_id = p.id
 		WHERE ci.user_id = $1
+		ORDER BY ci.created_at, ci.product_id
 	`
 	rows, err := r.db.Query(query, userID)
 	if err != nil {

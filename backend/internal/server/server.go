@@ -25,7 +25,8 @@ type Server struct {
 	authService     *service.AuthService
 	productService  *service.ProductService
 	categoryService *service.CategoryService
-	cartService		*service.CartService
+	cartService     *service.CartService
+	orderService    *service.OrderService
 	dbConn          *db.Connection
 	validate        *validator.Validate // ✅ central validator
 }
@@ -42,6 +43,7 @@ func New(cfg config.Config) (*Server, error) {
 	productRepo := repository.NewProductRepository(dbConn.DB)
 	categoryRepo := repository.NewCategoryRepository(dbConn.DB)
 	cartRepo := repository.NewCartRepository(dbConn.DB)
+	orderRepo := repository.NewOrderRepository(dbConn.DB)
 
 	// JWT
 	tokenManager := jwt.NewTokenManager(cfg.JWT.Secret)
@@ -51,6 +53,7 @@ func New(cfg config.Config) (*Server, error) {
 	productService := service.NewProductService(productRepo, categoryRepo)
 	categoryService := service.NewCategoryService(categoryRepo)
 	cartService := service.NewCartService(cartRepo, productRepo)
+	orderService := service.NewOrderService(orderRepo, cfg.Razorpay.KeyID, cfg.Razorpay.Secret)
 
 	// ✅ Validator (single instance)
 	validate := validator.New()
@@ -66,7 +69,8 @@ func New(cfg config.Config) (*Server, error) {
 		authService:     authService,
 		productService:  productService,
 		categoryService: categoryService,
-		cartService: cartService,
+		cartService:     cartService,
+		orderService:    orderService,
 		dbConn:          dbConn,
 		validate:        validate,
 	}
@@ -90,6 +94,7 @@ func (s *Server) setupRoutes() http.Handler {
 	productHandler := handler.NewProductHandler(s.productService, uploadsDir, s.validate)
 	categoryHandler := handler.NewCategoryHandler(s.categoryService, s.validate)
 	cartHandler := handler.NewCartHandler(s.cartService, s.validate)
+	orderHandler := handler.NewOrderHandler(s.orderService, s.validate)
 
 	// ---------------- PUBLIC ROUTES ----------------
 
@@ -120,9 +125,12 @@ func (s *Server) setupRoutes() http.Handler {
 	protectedMux.HandleFunc("/api/v1/products/delete", productHandler.DeleteProduct)
 
 	// cart protected routes
-	protectedMux.HandleFunc("/api/v1/cart", cartHandler.GetCart);
-	protectedMux.HandleFunc("/api/v1/cart/item/add", cartHandler.AddToCart);
-	protectedMux.HandleFunc("/api/v1/cart/item/remove", cartHandler.RemoveFromCart);
+	protectedMux.HandleFunc("/api/v1/cart", cartHandler.GetCart)
+	protectedMux.HandleFunc("/api/v1/cart/item/add", cartHandler.AddToCart)
+	protectedMux.HandleFunc("/api/v1/cart/item/remove", cartHandler.RemoveFromCart)
+	protectedMux.HandleFunc("/api/v1/orders", orderHandler.Orders)
+	protectedMux.HandleFunc("/api/v1/orders/", orderHandler.OrderAction)
+	protectedMux.HandleFunc("/api/v1/addresses", orderHandler.GetAddresses)
 	// wrap with auth middleware
 	protectedHandler := middleware.AuthMiddleware(s.authService)(protectedMux)
 
