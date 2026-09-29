@@ -1,27 +1,37 @@
-'use client';
+"use client";
 
 import { getAllCategories } from "@/store/slices/categorySlice";
 import { getAllProducts } from "@/store/slices/productSlice";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
 import { ProductCardUser } from "@/components/common/ProductCardUser";
+import { ProductCarousel } from "@/components/common/ProductCarousel";
+import { PaginationNav } from "@/components/common/PaginationNav";
 import { fetchCart } from "@/store/slices/orderSlice";
 import { ArrowDown, ArrowRight, BadgeCheck, Heart, PackageCheck } from "lucide-react";
 
 export default function Home() {
   const dispatch = useDispatch<AppDispatch>();
-  const { products } = useSelector((state: RootState) => state.product);
+  const [page, setPage] = useState(1);
+  const { products, total, totalPages, isLoading } = useSelector((state: RootState) => state.product);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
   useEffect(() => {
     dispatch(getAllCategories());
-    dispatch(getAllProducts());
+    dispatch(getAllProducts({ page, pageSize: 12 }));
+  }, [dispatch, page]);
+
+  useEffect(() => {
     if (isAuthenticated) dispatch(fetchCart());
   }, [dispatch, isAuthenticated]);
 
+  const safeProducts = products || [];
+
   return (
     <>
+      {/* Hero Section */}
       <section className="relative isolate overflow-hidden bg-[#fbf5e9] px-5 py-20 sm:py-28">
         <div aria-hidden="true" className="absolute -right-24 -top-32 -z-10 h-96 w-96 rounded-full border border-amber-900/10 sm:right-8 sm:top-8 sm:h-[34rem] sm:w-[34rem]" />
         <div aria-hidden="true" className="absolute -right-12 -top-20 -z-10 h-72 w-72 rounded-full border border-amber-900/10 sm:right-20 sm:top-20 sm:h-[28rem] sm:w-[28rem]" />
@@ -63,6 +73,19 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Featured Products Carousel */}
+      {safeProducts.length > 0 && (
+        <ProductCarousel
+          products={safeProducts}
+          title="Curated Sacred Essentials"
+          subtitle="Explore authentic malas, rudrakshas, and sanctified items popular among devotees."
+          badgeText="Featured Highlights"
+          autoPlay={true}
+          autoPlayInterval={4500}
+        />
+      )}
+
+      {/* All Products Collection / Catalog */}
       <section id="shop" className="scroll-mt-24 px-5 py-16 sm:py-24">
         <div className="mx-auto max-w-7xl">
           <div className="mb-9 flex flex-col justify-between gap-3 sm:mb-12 sm:flex-row sm:items-end">
@@ -70,11 +93,17 @@ export default function Home() {
               <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-amber-800">Chosen with care</p>
               <h2 className="font-serif text-3xl text-stone-900 sm:text-4xl">Find your everyday sacred</h2>
             </div>
-            <p className="max-w-sm text-sm leading-6 text-stone-500">Meaningful essentials for prayer, reflection, and the rituals that ground you.</p>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <p className="max-w-sm text-sm leading-6 text-stone-500">Meaningful essentials for prayer, reflection, and the rituals that ground you.</p>
+              <Link href="/products" className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 transition hover:text-amber-950">
+                View all items with filters <ArrowRight size={14} />
+              </Link>
+            </div>
           </div>
-          {products.length ? (
+
+          {safeProducts.length ? (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {products.map((product) => (
+              {safeProducts.map((product) => (
                 <ProductCardUser key={product.id} product={product} />
               ))}
             </div>
@@ -84,9 +113,29 @@ export default function Home() {
               <p className="mt-2 text-sm text-stone-500">Please check back soon.</p>
             </div>
           )}
+
+          {/* Bottom Pagination Navigation */}
+          {totalPages > 1 && (
+            <div className="mt-10">
+              <PaginationNav
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                pageSize={12}
+                onPageChange={(newPage) => {
+                  setPage(newPage);
+                  const el = document.getElementById("shop");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                isLoading={isLoading}
+                itemLabel="products"
+              />
+            </div>
+          )}
         </div>
       </section>
 
+      {/* Brand Value / Promise */}
       <section id="our-promise" className="bg-[#f8f3e9] px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto mb-10 max-w-xl text-center">

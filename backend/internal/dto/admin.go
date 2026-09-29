@@ -10,6 +10,14 @@ type AdminUser struct {
 	OrderCount int       `json:"orderCount"`
 }
 
+type AdminUserList struct {
+	Users      []AdminUser `json:"users"`
+	Total      int         `json:"total"`
+	Page       int         `json:"page"`
+	PageSize   int         `json:"pageSize"`
+	TotalPages int         `json:"totalPages"`
+}
+
 type AdminOrder struct {
 	OrderID       int       `json:"orderId"`
 	CustomerEmail string    `json:"customerEmail"`
@@ -19,6 +27,14 @@ type AdminOrder struct {
 	TotalAmount   float64   `json:"totalAmount"`
 	Currency      string    `json:"currency"`
 	CreatedAt     time.Time `json:"createdAt"`
+}
+
+type AdminOrderList struct {
+	Orders     []AdminOrder `json:"orders"`
+	Total      int          `json:"total"`
+	Page       int          `json:"page"`
+	PageSize   int          `json:"pageSize"`
+	TotalPages int          `json:"totalPages"`
 }
 
 type MonthlyRevenue struct {

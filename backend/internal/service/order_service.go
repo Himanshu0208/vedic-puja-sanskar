@@ -55,12 +55,22 @@ func (s *OrderService) CreateOrder(ctx context.Context, userID int, req dto.Orde
 	return response, nil
 }
 
-func (s *OrderService) GetOrders(userID int) ([]dto.UserOrderResponse, error) {
-	return s.orderRepo.GetOrdersByUserID(userID)
+func (s *OrderService) GetOrders(userID, page, pageSize int) (*dto.UserOrderListResponse, error) {
+	return s.orderRepo.GetOrdersByUserID(userID, page, pageSize)
 }
 
 func (s *OrderService) GetAddresses(userID int) ([]dto.SavedAddress, error) {
 	return s.orderRepo.GetAddressesByUserID(userID)
+}
+
+func (s *OrderService) CreateAddress(userID int, address dto.ShippingAddress) (*dto.SavedAddress, error) {
+	return s.orderRepo.CreateAddress(userID, address)
+}
+func (s *OrderService) UpdateAddress(userID, addressID int, address dto.ShippingAddress) (*dto.SavedAddress, error) {
+	return s.orderRepo.UpdateAddress(userID, addressID, address)
+}
+func (s *OrderService) DeleteAddress(userID, addressID int) error {
+	return s.orderRepo.DeleteAddress(userID, addressID)
 }
 
 func (s *OrderService) RetryPayment(userID, orderID int) (*dto.OrderResponse, error) {
@@ -82,8 +92,12 @@ func (s *OrderService) RequestReturn(userID, orderID int) error {
 	return s.orderRepo.RequestReturn(userID, orderID)
 }
 
-func (s *OrderService) GetAdminOrders() ([]dto.AdminOrder, error) {
-	return s.orderRepo.GetAdminOrders()
+func (s *OrderService) GetAdminOrders(page, pageSize int, search, status, paymentStatus string) (*dto.AdminOrderList, error) {
+	return s.orderRepo.GetAdminOrders(page, pageSize, search, status, paymentStatus)
+}
+
+func (s *OrderService) UpdateOrderStatus(orderID int, newStatus string) error {
+	return s.orderRepo.UpdateOrderStatus(orderID, newStatus)
 }
 
 func (s *OrderService) GetAdminReport() (*dto.AdminReport, error) {

@@ -48,7 +48,7 @@ export default function Login({ onClose, onSwitchToSignup }: LoginProps) {
       setPassword('');
       dispatch(fetchCart());
     } else {
-      const errorMsg = result.payload || result.error.message || 'Login failed. Please try again.';
+      const errorMsg = (typeof result.payload === 'string' ? result.payload : result.error?.message) || 'Login failed. Please try again.';
       toast.error(errorMsg);
       setLocalError(errorMsg);
     }

@@ -25,6 +25,7 @@ export interface ProductResponse {
   image_path: string;
   category: CategoryResponse;
   quantity?: number;
+  inStock?: boolean;
   createdBy: number;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +34,9 @@ export interface ProductResponse {
 export interface ProductListResponse {
   products: ProductResponse[];
   total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface DeleteProductResponse {

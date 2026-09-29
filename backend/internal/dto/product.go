@@ -29,6 +29,7 @@ type ProductResponse struct {
 	ImagePath    string    `json:"image_path"`
 	Category     *Category `json:"category"`
 	Quantity     int       `json:"quantity"`
+	InStock      bool      `json:"inStock"`
 	CreatedBy    int       `json:"createdBy"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
@@ -50,8 +51,11 @@ type UpdateProductRequest struct {
 }
 
 type ProductListResponse struct {
-	Products []*ProductResponse `json:"products"`
-	Total    int                `json:"total"`
+	Products   []*ProductResponse `json:"products"`
+	Total      int                `json:"total"`
+	Page       int                `json:"page"`
+	PageSize   int                `json:"pageSize"`
+	TotalPages int                `json:"totalPages"`
 }
 
 type ProductImageUploadResponse struct {

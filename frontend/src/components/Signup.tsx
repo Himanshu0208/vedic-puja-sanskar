@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
-import { ArrowRight, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from 'lucide-react';
+import { ArrowRight, ChevronDown, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from 'lucide-react';
 import { signup, clearError } from '@/store/slices/authSlice';
 import { AppDispatch, RootState } from '@/store';
 
@@ -14,6 +14,9 @@ interface SignupProps {
 
 export default function Signup({ onClose, onSwitchToLogin }: SignupProps) {
   const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [gender, setGender] = useState('prefer_not_to_say');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState('');
@@ -39,6 +42,11 @@ export default function Signup({ onClose, onSwitchToLogin }: SignupProps) {
       toast.error('Email is required');
       return;
     }
+    if (!fullName.trim() || phone.trim().length < 8) {
+      setLocalError('Enter your name and a valid contact number');
+      toast.error('Enter your name and a valid contact number');
+      return;
+    }
     if (!validateEmail(email)) {
       setLocalError('Please enter a valid email');
       toast.error('Please enter a valid email');
@@ -61,15 +69,17 @@ export default function Signup({ onClose, onSwitchToLogin }: SignupProps) {
     }
 
     // Dispatch signup action
-    const result = await dispatch(signup({ email, password }));
+    const result = await dispatch(signup({ fullName: fullName.trim(), phone: phone.trim(), gender, email, password }));
     
     if (signup.fulfilled.match(result)) {
       onClose();
       setEmail('');
+      setFullName('');
+      setPhone('');
       setPassword('');
       setConfirmPassword('');
     } else {
-      const errorMsg = result.payload || result.error.message || 'Signup failed. Please try again.';
+      const errorMsg = (typeof result.payload === 'string' ? result.payload : result.error?.message) || 'Signup failed. Please try again.';
       toast.error(errorMsg);
       setLocalError(errorMsg);
     }
@@ -86,6 +96,32 @@ export default function Signup({ onClose, onSwitchToLogin }: SignupProps) {
               {displayError}
             </div>
           )}
+
+          <div>
+            <label htmlFor="signup-name" className="mb-1.5 block text-sm font-medium text-stone-700">Full name</label>
+            <input id="signup-name" autoComplete="name" required maxLength={120} value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={isLoading} className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 disabled:opacity-60" placeholder="Your name" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label htmlFor="signup-phone" className="mb-1.5 block text-sm font-medium text-stone-700">Contact number</label><input id="signup-phone" type="tel" autoComplete="tel" required minLength={8} maxLength={20} value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isLoading} className="w-full rounded-xl border border-amber-200 bg-white px-3 py-3 text-sm text-stone-900 outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 disabled:opacity-60" placeholder="Phone number" /></div>
+            <div>
+              <label htmlFor="signup-gender" className="mb-1.5 block text-sm font-medium text-stone-700">Gender</label>
+              <div className="relative">
+                <select
+                  id="signup-gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full appearance-none rounded-xl border border-amber-200 bg-white py-3 pl-3 pr-8 text-sm text-stone-900 outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 disabled:opacity-60"
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" />
+              </div>
+            </div>
+          </div>
 
           <div>
             <label htmlFor="signup-email" className="mb-1.5 block text-sm font-medium text-stone-700">Email address</label>

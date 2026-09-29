@@ -13,6 +13,9 @@ const (
 // User represents a user in the system
 type User struct {
 	ID        int       `json:"id"`
+	FullName  string    `json:"fullName"`
+	Phone     string    `json:"phone"`
+	Gender    string    `json:"gender"`
 	Email     string    `json:"email"`
 	Password  string    `json:"-"` // Never expose password in JSON
 	Role      UserRole  `json:"role"`

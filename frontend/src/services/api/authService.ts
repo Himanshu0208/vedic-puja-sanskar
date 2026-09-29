@@ -11,12 +11,9 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 };
 
 class AuthService {
-  async signup(email: string, password: string): Promise<AuthResponse> {
+  async signup(details: { fullName: string; phone: string; gender: string; email: string; password: string }): Promise<AuthResponse> {
     try {
-      const response = await axiosInstance.post<AuthResponse>('/auth/signup', {
-        email,
-        password,
-      });
+      const response = await axiosInstance.post<AuthResponse>('/auth/signup', details);
       return response.data;
     } catch (error: unknown) {
       const message = getApiErrorMessage(error, 'Signup failed');
@@ -46,6 +43,19 @@ class AuthService {
       throw new Error(message);
     }
   }
+
+  async updateProfile(details: { fullName: string; phone: string; gender?: string }) {
+    const response = await axiosInstance.put('/auth/profile', details);
+    return response.data;
+  }
+
+  async getWishlist(): Promise<number[]> {
+    const response = await axiosInstance.get<number[]>('/auth/wishlist');
+    return response.data;
+  }
+
+  async addWishlist(productId: number) { await axiosInstance.post('/auth/wishlist', { productId }); }
+  async removeWishlist(productId: number) { await axiosInstance.delete('/auth/wishlist', { params: { productId } }); }
 
   logout(): void {
     if (typeof window !== 'undefined') {

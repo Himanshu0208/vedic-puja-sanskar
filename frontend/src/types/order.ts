@@ -1,36 +1,36 @@
 export interface CartItem {
-    productId: number,
-    productImageURL: string,
-    productName: string,
-    productDescription: string,
-    quantity: number,
-    price: number,
-    discountedPrice: number
+    productId: number;
+    productImageURL: string;
+    productName: string;
+    productDescription: string;
+    quantity: number;
+    price: number;
+    discountedPrice: number;
 }
 
 export interface CartResponse {
-	userId: number,
-	items: CartItem[],
-	totalPrice: number,
-	discountedTotalPrice: number,
-	totalSavings: number,
+	userId: number;
+	items: CartItem[];
+	totalPrice: number;
+	discountedTotalPrice: number;
+	totalSavings: number;
 }
 
 export interface AddItemToCartRequest {
-	productId: number,
-	quantity: number
+	productId: number;
+	quantity: number;
 }
 
 export interface RemoveItemFromRequest {
-	productId: number,
-	quantity: number
+	productId: number;
+	quantity: number;
 }
 
 export interface ShippingAddress {
   fullName: string;
   phone: string;
   line1: string;
-  line2: string;
+  line2?: string;
   city: string;
   state: string;
   postalCode: string;
@@ -46,15 +46,32 @@ export interface CreateOrderRequest {
 
 export interface SavedAddress extends ShippingAddress { id: number }
 
+export interface OrderItem {
+  productName: string;
+  imageURL?: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+
 export interface UserOrder {
   orderId: number;
   status: string;
   paymentStatus: string;
   paymentMethod: 'razorpay' | 'cod';
+  returnStatus?: string;
   totalAmount: number;
   currency: string;
   createdAt: string;
-  items: { productName: string; quantity: number; unitPrice: number; amount: number }[];
+  items: OrderItem[];
+}
+
+export interface UserOrderPage {
+  orders: UserOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface CreateOrderResponse {

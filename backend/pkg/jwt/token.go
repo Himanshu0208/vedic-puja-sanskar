@@ -12,7 +12,7 @@ import (
 type Claims struct {
 	UserID int    `json:"user_id"`
 	Email  string `json:"email"`
-	Role   string    `json:"role"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -45,7 +45,7 @@ func (tm *TokenManager) GenerateToken(userID int, email string, role string, exp
 		return "", err
 	}
 
-	fmt.Println("Token Generated: expiryAt: [%s], issuedAt: [%s]", claims.ExpiresAt.Time.String(), claims.IssuedAt.Time.String())
+	fmt.Printf("Token Generated: expiryAt: [%s], issuedAt: [%s]\n", claims.ExpiresAt.Time.String(), claims.IssuedAt.Time.String())
 	return tokenString, nil
 }
 

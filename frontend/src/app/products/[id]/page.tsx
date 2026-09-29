@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, ChevronRight, Heart, Minus, PackageCheck, Plus, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronRight, Heart, Minus, PackageCheck, Plus, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { productService } from '@/services/api/productService';
 import type { ProductResponse } from '@/types/product';
@@ -11,6 +11,7 @@ import { getProductImage } from '@/utils/pathResolution';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { orderService } from '@/services/api/orderService';
+import { authService } from '@/services/api/authService';
 import type { SavedAddress } from '@/types/order';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/store';
@@ -37,6 +38,7 @@ export default function ProductDetailsPage() {
   const cartQuantity = product ? selectedProductQuantities?.get(product.id) ?? 0 : 0;
   const discounted = !!product?.offerPrice && product.offerPrice > 0 && product.offerPrice < product.sellingPrice;
   const salePrice = product ? (discounted ? product.offerPrice : product.sellingPrice) : 0;
+  const isOutOfStock = product?.inStock === false || (product?.inStock === undefined && product?.quantity !== undefined && product.quantity <= 0);
 
   useEffect(() => {
     let active = true;
@@ -86,17 +88,18 @@ export default function ProductDetailsPage() {
   const benefits = product?.benefits.split(/[\n,]+/).map((benefit) => benefit.trim()).filter(Boolean) ?? [];
 
   useEffect(() => {
-    if (!product) return;
-    const saved = JSON.parse(localStorage.getItem('vedic-puja-wishlist') || '[]') as number[];
-    setWishlisted(saved.includes(product.id));
-  }, [product]);
+    if (!product || !isAuthenticated) { setWishlisted(false); return; }
+    void authService.getWishlist().then((ids) => setWishlisted(ids.includes(product.id))).catch((reason) => toast.error(actionError(reason)));
+  }, [product, isAuthenticated]);
 
-  const toggleWishlist = () => {
+  const toggleWishlist = async () => {
     if (!product) return;
-    const saved = JSON.parse(localStorage.getItem('vedic-puja-wishlist') || '[]') as number[];
-    const next = wishlisted ? saved.filter((productId) => productId !== product.id) : [...new Set([...saved, product.id])];
-    localStorage.setItem('vedic-puja-wishlist', JSON.stringify(next));
-    setWishlisted(!wishlisted);
+    if (!isAuthenticated) { dispatch(openAuthModal('login')); return; }
+    try {
+      if (wishlisted) await authService.removeWishlist(product.id);
+      else await authService.addWishlist(product.id);
+      setWishlisted(!wishlisted);
+    } catch (reason) { toast.error(actionError(reason)); }
   };
 
   const buyNow = () => {
@@ -126,17 +129,36 @@ export default function ProductDetailsPage() {
 
           <div className="mt-6 rounded-3xl border border-amber-100/80 bg-white/85 p-5 shadow-[0_16px_48px_-38px_rgba(80,50,20,.55)] backdrop-blur sm:p-6">
             <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-              <span className="text-3xl font-semibold tracking-tight text-stone-950">{money(salePrice)}</span>
-              {discounted && <><span className="pb-1 text-base text-stone-400 line-through">{money(product.sellingPrice)}</span><span className="mb-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-800">Save {Math.round(((product.sellingPrice - salePrice) / product.sellingPrice) * 100)}%</span></>}
+              <span className="text-3xl font-semibold tracking-tight text-stone-950">{money(salePrice ?? product.sellingPrice)}</span>
+              {discounted && <><span className="pb-1 text-base text-stone-400 line-through">{money(product.sellingPrice)}</span><span className="mb-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-800">Save {Math.round(((product.sellingPrice - (salePrice ?? product.sellingPrice)) / product.sellingPrice) * 100)}%</span></>}
             </div>
-            <p className={`mt-2 inline-flex items-center gap-1.5 text-xs font-medium ${product.quantity === undefined ? 'text-stone-500' : product.quantity > 0 ? 'text-emerald-800' : 'text-red-700'}`}><span className={`h-2 w-2 rounded-full ${product.quantity === undefined ? 'bg-stone-400' : product.quantity > 0 ? 'bg-emerald-600' : 'bg-red-600'}`}/>{product.quantity === undefined ? 'Availability confirmed at checkout' : product.quantity > 0 ? `${product.quantity} in stock` : 'Currently out of stock'}</p>
+            <p className={`mt-2 inline-flex items-center gap-1.5 text-xs font-medium ${isOutOfStock ? 'text-red-700' : 'text-emerald-800'}`}><span className={`h-2 w-2 rounded-full ${isOutOfStock ? 'bg-red-600' : 'bg-emerald-600'}`}/>{isOutOfStock ? 'Currently out of stock' : product.quantity !== undefined && product.quantity > 0 ? `${product.quantity} in stock` : 'In stock'}</p>
             <div className="mt-5 border-t border-stone-100 pt-5">
               <h2 className="text-sm font-semibold text-stone-900">{cartQuantity > 0 ? 'In your cart' : 'Make it yours'}</h2>
-              {isAuthenticated && cartQuantity > 0 ? <div className="mt-3 inline-flex items-center gap-4 rounded-full bg-amber-50 p-1 ring-1 ring-amber-100"><button type="button" disabled={updating} onClick={() => void changeCart('remove')} aria-label={`Remove one ${product.name} from cart`} className="grid h-10 w-10 place-items-center rounded-full bg-white text-stone-700 shadow-sm transition hover:text-amber-900 disabled:opacity-50"><Minus size={17}/></button><span className="min-w-6 text-center text-sm font-bold text-stone-900" aria-live="polite">{cartQuantity}</span><button type="button" disabled={updating || product.quantity === 0} onClick={() => void changeCart('add')} aria-label={`Add one ${product.name} to cart`} className="grid h-10 w-10 place-items-center rounded-full bg-amber-800 text-white shadow-sm transition hover:bg-amber-900 disabled:opacity-50"><Plus size={17}/></button></div> : <button type="button" disabled={updating || product.quantity === 0} onClick={() => void changeCart('add')} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-800 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-900 disabled:cursor-not-allowed disabled:opacity-50">{product.quantity === 0 ? 'Out of stock' : 'Add to cart'}<ArrowRight size={17}/></button>}
+              {isAuthenticated && cartQuantity > 0 ? <div className="mt-3 inline-flex items-center gap-4 rounded-full bg-amber-50 p-1 ring-1 ring-amber-100"><button type="button" disabled={updating} onClick={() => void changeCart('remove')} aria-label={`Remove one ${product.name} from cart`} className="grid h-10 w-10 place-items-center rounded-full bg-white text-stone-700 shadow-sm transition hover:text-amber-900 disabled:opacity-50"><Minus size={17}/></button><span className="min-w-6 text-center text-sm font-bold text-stone-900" aria-live="polite">{cartQuantity}</span><button type="button" disabled={updating || isOutOfStock} onClick={() => void changeCart('add')} aria-label={`Add one ${product.name} to cart`} className="grid h-10 w-10 place-items-center rounded-full bg-amber-800 text-white shadow-sm transition hover:bg-amber-900 disabled:opacity-50"><Plus size={17}/></button></div> : <button type="button" disabled={updating || isOutOfStock} onClick={() => void changeCart('add')} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-800 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-900 disabled:cursor-not-allowed disabled:opacity-50">{isOutOfStock ? 'Out of stock' : 'Add to cart'}<ArrowRight size={17}/></button>}
               {isAuthenticated && <label className="mt-5 block text-left text-xs font-semibold text-stone-700">Deliver to
-                {savedAddresses.length ? <select value={selectedAddressId ?? ''} disabled={addressesLoading} onChange={(event) => setSelectedAddressId(Number(event.target.value) || null)} className="mt-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-3 text-sm font-medium text-stone-800 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-700/15"><option value="">Choose a new address at checkout</option>{savedAddresses.map((address) => <option key={address.id} value={address.id}>{address.fullName} — {address.line1}, {address.city}</option>)}</select> : <p className="mt-2 rounded-xl bg-stone-50 px-3 py-3 text-sm font-normal text-stone-600">No saved addresses yet. You can add one during checkout.</p>}
+                {savedAddresses.length ? (
+                  <div className="relative mt-2">
+                    <select
+                      value={selectedAddressId ?? ''}
+                      disabled={addressesLoading}
+                      onChange={(event) => setSelectedAddressId(Number(event.target.value) || null)}
+                      className="w-full appearance-none rounded-xl border border-stone-200 bg-white py-3 pl-3.5 pr-9 text-sm font-medium text-stone-800 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-700/15"
+                    >
+                      <option value="">Choose a new address at checkout</option>
+                      {savedAddresses.map((address) => (
+                        <option key={address.id} value={address.id}>
+                          {address.fullName} — {address.line1}, {address.city}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  </div>
+                ) : (
+                  <p className="mt-2 rounded-xl bg-stone-50 px-3 py-3 text-sm font-normal text-stone-600">No saved addresses yet. You can add one during checkout.</p>
+                )}
               </label>}
-              <button type="button" disabled={product.quantity === 0 || addressesLoading} onClick={buyNow} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-amber-800 bg-white px-5 text-sm font-semibold text-amber-900 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50">Buy now</button>
+              <button type="button" disabled={isOutOfStock || addressesLoading} onClick={buyNow} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-amber-800 bg-white px-5 text-sm font-semibold text-amber-900 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50">Buy now</button>
               <button type="button" aria-pressed={wishlisted} onClick={toggleWishlist} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-stone-600 transition hover:bg-rose-50 hover:text-rose-700"><Heart size={17} className={wishlisted ? 'fill-rose-600 text-rose-600' : ''}/>{wishlisted ? 'Added to wishlist' : 'Add to wishlist'}</button>
             </div>
           </div>

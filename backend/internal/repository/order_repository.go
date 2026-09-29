@@ -189,17 +189,62 @@ func (r *OrderRepository) GetAddressesByUserID(userID int) ([]dto.SavedAddress, 
 	return addresses, rows.Err()
 }
 
-func (r *OrderRepository) GetOrdersByUserID(userID int) ([]dto.UserOrderResponse, error) {
-	rows, err := r.db.Query(`SELECT o.id, o.status, COALESCE(o.return_status,''), p.status, p.method, o.total_amount, o.currency, o.created_at,
-		oi.product_name, COALESCE(pr.image_url,''), oi.quantity, oi.unit_price, oi.discounted_unit_price
-		FROM orders o JOIN payments p ON p.order_id=o.id
-		LEFT JOIN order_items oi ON oi.order_id=o.id LEFT JOIN products pr ON pr.id=oi.product_id WHERE o.user_id=$1
-		ORDER BY o.created_at DESC, o.id DESC, oi.id`, userID)
+func (r *OrderRepository) CreateAddress(userID int, a dto.ShippingAddress) (*dto.SavedAddress, error) {
+	var saved dto.SavedAddress
+	err := r.db.QueryRow(`INSERT INTO saved_addresses (user_id,full_name,phone,line1,line2,city,state,postal_code,country) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`, userID, a.FullName, a.Phone, a.Line1, a.Line2, a.City, a.State, a.PostalCode, strings.ToUpper(a.Country)).Scan(&saved.ID)
+	saved.ShippingAddress = a
+	saved.Country = strings.ToUpper(a.Country)
+	return &saved, err
+}
+
+func (r *OrderRepository) UpdateAddress(userID, addressID int, a dto.ShippingAddress) (*dto.SavedAddress, error) {
+	var saved dto.SavedAddress
+	err := r.db.QueryRow(`UPDATE saved_addresses SET full_name=$1,phone=$2,line1=$3,line2=$4,city=$5,state=$6,postal_code=$7,country=$8,updated_at=NOW() WHERE id=$9 AND user_id=$10 RETURNING id`, a.FullName, a.Phone, a.Line1, a.Line2, a.City, a.State, a.PostalCode, strings.ToUpper(a.Country), addressID, userID).Scan(&saved.ID)
+	saved.ShippingAddress = a
+	saved.Country = strings.ToUpper(a.Country)
+	return &saved, err
+}
+
+func (r *OrderRepository) DeleteAddress(userID, addressID int) error {
+	result, err := r.db.Exec(`DELETE FROM saved_addresses WHERE id=$1 AND user_id=$2`, addressID, userID)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *OrderRepository) GetOrdersByUserID(userID, page, pageSize int) (*dto.UserOrderListResponse, error) {
+	result := &dto.UserOrderListResponse{Orders: make([]dto.UserOrderResponse, 0), Page: page, PageSize: pageSize}
+	if err := r.db.QueryRow(`SELECT COUNT(*) FROM orders WHERE user_id=$1`, userID).Scan(&result.Total); err != nil {
+		return nil, err
+	}
+	result.TotalPages = (result.Total + pageSize - 1) / pageSize
+	rows, err := r.db.Query(`
+		WITH paged_orders AS (
+			SELECT id, status, COALESCE(return_status,'') as return_status, total_amount, currency, created_at
+			FROM orders
+			WHERE user_id = $1
+			ORDER BY created_at DESC, id DESC
+			LIMIT $2 OFFSET $3
+		)
+		SELECT po.id, po.status, po.return_status, COALESCE(p.status,'unknown'), COALESCE(p.method,'unknown'), po.total_amount, po.currency, po.created_at,
+			oi.product_name, COALESCE(pr.image_url,''), oi.quantity, oi.unit_price, oi.discounted_unit_price
+		FROM paged_orders po
+		LEFT JOIN payments p ON p.order_id = po.id
+		LEFT JOIN order_items oi ON oi.order_id = po.id
+		LEFT JOIN products pr ON pr.id = oi.product_id
+		ORDER BY po.created_at DESC, po.id DESC, oi.id`, userID, pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	orders := make([]dto.UserOrderResponse, 0)
 	byID := make(map[int]int)
 	for rows.Next() {
 		var orderID int
@@ -216,15 +261,21 @@ func (r *OrderRepository) GetOrdersByUserID(userID int) ([]dto.UserOrderResponse
 			order.OrderID = orderID
 			order.PaymentMethod = strings.ToLower(order.PaymentMethod)
 			order.Items = make([]dto.OrderItemResponse, 0)
-			orders = append(orders, order)
-			index = len(orders) - 1
+			result.Orders = append(result.Orders, order)
+			index = len(result.Orders) - 1
 			byID[orderID] = index
 		}
 		if itemName.Valid {
-			orders[index].Items = append(orders[index].Items, dto.OrderItemResponse{ProductName: itemName.String, ImageURL: imageURL.String, Quantity: int(quantity.Int64), UnitPrice: unitPrice.Float64, Amount: amount.Float64})
+			result.Orders[index].Items = append(result.Orders[index].Items, dto.OrderItemResponse{
+				ProductName: itemName.String,
+				ImageURL:    imageURL.String,
+				Quantity:    int(quantity.Int64),
+				UnitPrice:   unitPrice.Float64,
+				Amount:      amount.Float64,
+			})
 		}
 	}
-	return orders, rows.Err()
+	return result, rows.Err()
 }
 
 func (r *OrderRepository) GetRetryPayment(userID, orderID int) (*models.PendingPayment, error) {
@@ -267,6 +318,52 @@ func (r *OrderRepository) CancelOrder(userID, orderID int) error {
 	return tx.Commit()
 }
 
+var validOrderStatuses = map[string]bool{
+	"PENDING_PAYMENT":  true,
+	"PLACED":           true,
+	"PROCESSING":       true,
+	"PACKED":           true,
+	"SHIPPED":          true,
+	"OUT_FOR_DELIVERY": true,
+	"DELIVERED":        true,
+	"CANCELLED":        true,
+	"RTO":              true,
+}
+
+func (r *OrderRepository) UpdateOrderStatus(orderID int, newStatus string) error {
+	newStatus = strings.ToUpper(strings.TrimSpace(newStatus))
+	if !validOrderStatuses[newStatus] {
+		return fmt.Errorf("invalid order status: %s", newStatus)
+	}
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var currentStatus string
+	err = tx.QueryRow(`SELECT status FROM orders WHERE id=$1 FOR UPDATE`, orderID).Scan(&currentStatus)
+	if errors.Is(err, sql.ErrNoRows) {
+		return errors.New("order not found")
+	}
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2`, newStatus, orderID); err != nil {
+		return err
+	}
+
+	if newStatus == "CANCELLED" {
+		_, _ = tx.Exec(`UPDATE payments SET status='failed', remarks='Cancelled by admin', updated_at=NOW() WHERE order_id=$1 AND status='pending'`, orderID)
+	} else if newStatus == "DELIVERED" {
+		_, _ = tx.Exec(`UPDATE payments SET status='success', updated_at=NOW() WHERE order_id=$1 AND method='COD' AND status='pending'`, orderID)
+	}
+
+	return tx.Commit()
+}
+
 func (r *OrderRepository) RequestReturn(userID, orderID int) error {
 	result, err := r.db.Exec(`UPDATE orders SET return_status='RETURN_REQUESTED', updated_at=NOW()
 		WHERE id=$1 AND user_id=$2 AND status='DELIVERED' AND return_status IS NULL`, orderID, userID)
@@ -279,24 +376,29 @@ func (r *OrderRepository) RequestReturn(userID, orderID int) error {
 	return nil
 }
 
-func (r *OrderRepository) GetAdminOrders() ([]dto.AdminOrder, error) {
+func (r *OrderRepository) GetAdminOrders(page, pageSize int, search, status, paymentStatus string) (*dto.AdminOrderList, error) {
+	filter := ` WHERE ($1='' OR o.id::text ILIKE '%'||$1||'%' OR u.email ILIKE '%'||$1||'%') AND ($2='' OR o.status::text=$2) AND ($3='' OR p.status::text=$3)`
+	result := &dto.AdminOrderList{Orders: make([]dto.AdminOrder, 0), Page: page, PageSize: pageSize}
+	if err := r.db.QueryRow(`SELECT COUNT(*) FROM orders o JOIN users u ON u.id=o.user_id LEFT JOIN payments p ON p.order_id=o.id`+filter, search, status, paymentStatus).Scan(&result.Total); err != nil {
+		return nil, err
+	}
+	result.TotalPages = (result.Total + pageSize - 1) / pageSize
 	rows, err := r.db.Query(`SELECT o.id,u.email,o.status,COALESCE(p.status,'unknown'),COALESCE(p.method,'unknown'),o.total_amount,o.currency,o.created_at
-		FROM orders o JOIN users u ON u.id=o.user_id LEFT JOIN payments p ON p.order_id=o.id
-		ORDER BY o.created_at DESC LIMIT 100`)
+		FROM orders o JOIN users u ON u.id=o.user_id LEFT JOIN payments p ON p.order_id=o.id`+filter+`
+		ORDER BY o.created_at DESC LIMIT $4 OFFSET $5`, search, status, paymentStatus, pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	orders := make([]dto.AdminOrder, 0)
 	for rows.Next() {
 		var order dto.AdminOrder
 		if err := rows.Scan(&order.OrderID, &order.CustomerEmail, &order.Status, &order.PaymentStatus, &order.PaymentMethod, &order.TotalAmount, &order.Currency, &order.CreatedAt); err != nil {
 			return nil, err
 		}
 		order.PaymentMethod = strings.ToLower(order.PaymentMethod)
-		orders = append(orders, order)
+		result.Orders = append(result.Orders, order)
 	}
-	return orders, rows.Err()
+	return result, rows.Err()
 }
 
 func (r *OrderRepository) GetAdminReport() (*dto.AdminReport, error) {

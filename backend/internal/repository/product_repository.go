@@ -95,14 +95,20 @@ func (pr *ProductRepository) UpdateProduct(product *models.Product) error {
 	return nil
 }
 
-func (pr *ProductRepository) GetAllProducts() ([]*models.ProductWithCategory, error) {
+func (pr *ProductRepository) GetAllProducts(page, pageSize int, search, category string) ([]*models.ProductWithCategory, int, error) {
+	filter := ` WHERE ($1='' OR p.name ILIKE '%'||$1||'%' OR c.name ILIKE '%'||$1||'%') AND ($2='' OR c.name=$2)`
+	var total int
+	if err := pr.db.QueryRow(`SELECT COUNT(*) FROM products p JOIN categories c ON p.category_id=c.id`+filter, search, category).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 	rows, err := pr.db.Query(
 		`SELECT p.id, p.name, p.description, p.benefits, p.price, p.selling_price, p.offer_price, 
         p.image_url, p.image_path, p.category_id, p.quantity, p.created_by, p.created_at, p.updated_at, c.name as category_name
-        FROM products as p JOIN categories c ON p.category_id = c.id ORDER BY p.created_at DESC`,
+		FROM products as p JOIN categories c ON p.category_id = c.id`+filter+` ORDER BY p.created_at DESC, p.id DESC LIMIT $3 OFFSET $4`,
+		search, category, pageSize, (page-1)*pageSize,
 	)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -116,12 +122,12 @@ func (pr *ProductRepository) GetAllProducts() ([]*models.ProductWithCategory, er
 			&product.Quantity, &product.CreatedBy, &product.CreatedAt, &product.UpdatedAt, &product.CategoryName,
 		)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		products = append(products, product)
 	}
 
-	return products, rows.Err()
+	return products, total, rows.Err()
 }
 
 func (pr *ProductRepository) GetProductsByCategory(categoryID int) ([]*models.ProductWithCategory, error) {

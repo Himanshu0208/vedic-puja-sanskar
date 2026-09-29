@@ -68,6 +68,7 @@ func (s *ProductService) CreateProduct(req *dto.ProductRequest, createdBy int, i
 		ImagePath:    product.ImagePath,
 		Category:     categoryDTO,
 		Quantity:     product.Quantity,
+		InStock:      product.Quantity > 0,
 		CreatedBy:    product.CreatedBy,
 		CreatedAt:    product.CreatedAt,
 		UpdatedAt:    product.UpdatedAt,
@@ -122,6 +123,7 @@ func (s *ProductService) UpdateProduct(id int, req *dto.UpdateProductRequest, us
 		ImagePath:    updatedProduct.ImagePath,
 		Category:     categoryDTO,
 		Quantity:     updatedProduct.Quantity,
+		InStock:      updatedProduct.Quantity > 0,
 		CreatedBy:    updatedProduct.CreatedBy,
 		CreatedAt:    updatedProduct.CreatedAt,
 		UpdatedAt:    updatedProduct.UpdatedAt,
@@ -129,8 +131,8 @@ func (s *ProductService) UpdateProduct(id int, req *dto.UpdateProductRequest, us
 }
 
 // GetAllProducts retrieves all products
-func (s *ProductService) GetAllProducts(role string) (*dto.ProductListResponse, error) {
-	products, err := s.productRepo.GetAllProducts()
+func (s *ProductService) GetAllProducts(role string, page, pageSize int, search, category string) (*dto.ProductListResponse, error) {
+	products, total, err := s.productRepo.GetAllProducts(page, pageSize, search, category)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get products: %w", err)
 	}
@@ -152,7 +154,7 @@ func (s *ProductService) GetAllProducts(role string) (*dto.ProductListResponse, 
 			ImageURL:     product.ImageURL,
 			ImagePath:    product.ImagePath,
 			Category:     categoryDTO,
-			Quantity:     product.Quantity,
+			InStock:      product.Quantity > 0,
 			CreatedBy:    product.CreatedBy,
 			CreatedAt:    product.CreatedAt,
 			UpdatedAt:    product.UpdatedAt,
@@ -165,8 +167,8 @@ func (s *ProductService) GetAllProducts(role string) (*dto.ProductListResponse, 
 	}
 
 	return &dto.ProductListResponse{
-		Products: productsDTO,
-		Total:    len(products),
+		Products: productsDTO, Total: total, Page: page, PageSize: pageSize,
+		TotalPages: (total + pageSize - 1) / pageSize,
 	}, nil
 }
 
@@ -192,7 +194,7 @@ func (s *ProductService) GetProductByID(id int, userID int, role string, isAutho
 		ImageURL:     product.ImageURL,
 		ImagePath:    product.ImagePath,
 		Category:     categoryDTO,
-		Quantity:     product.Quantity,
+		InStock:      product.Quantity > 0,
 		CreatedBy:    product.CreatedBy,
 		CreatedAt:    product.CreatedAt,
 		UpdatedAt:    product.UpdatedAt,
@@ -200,6 +202,7 @@ func (s *ProductService) GetProductByID(id int, userID int, role string, isAutho
 
 	if isAuthorized && role == "admin" {
 		response.Price = product.Price
+		response.Quantity = product.Quantity
 	}
 
 	return response, nil
