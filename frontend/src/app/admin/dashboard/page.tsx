@@ -13,6 +13,7 @@ import {
 import { adminService } from "@/services/api/adminService";
 import type { AdminOrder, AdminReport } from "@/types/admin";
 import { AdminDonutChart } from "@/components/admin/AdminDonutChart";
+import { PaginationNav } from "@/components/common/PaginationNav";
 
 const formatMoney = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
@@ -50,14 +51,16 @@ const cardLinks = [
 export default function AdminDashboardPage() {
   const [report, setReport] = useState<AdminReport | null>(null);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [orderPage, setOrderPage] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([adminService.getReports(), adminService.getOrders()])
-      .then(([stats, recentOrders]) => {
-        setReport(stats);
-        setOrders(recentOrders.slice(0, 5));
-      })
+    adminService
+      .getReports()
+      .then((stats) => setReport(stats))
       .catch((err) =>
         setError(
           err instanceof Error ? err.message : "Could not load dashboard data.",
@@ -65,6 +68,40 @@ export default function AdminDashboardPage() {
       );
   }, []);
 
+  useEffect(() => {
+    setLoadingOrders(true);
+    adminService
+      .getOrders({ page: orderPage, pageSize: 5 })
+      .then((recentOrders: unknown) => {
+        if (Array.isArray(recentOrders)) {
+          setOrders(recentOrders as AdminOrder[]);
+          setTotalOrders(recentOrders.length);
+          setTotalPages(1);
+        } else if (
+          recentOrders &&
+          typeof recentOrders === "object" &&
+          "orders" in recentOrders &&
+          Array.isArray((recentOrders as { orders: AdminOrder[] }).orders)
+        ) {
+          const data = recentOrders as { orders: AdminOrder[]; total: number; totalPages: number };
+          setOrders(data.orders);
+          setTotalOrders(data.total ?? data.orders.length);
+          setTotalPages(data.totalPages ?? 1);
+        } else {
+          setOrders([]);
+          setTotalOrders(0);
+          setTotalPages(0);
+        }
+      })
+      .catch((err) =>
+        setError(
+          err instanceof Error ? err.message : "Could not load orders.",
+        ),
+      )
+      .finally(() => setLoadingOrders(false));
+  }, [orderPage]);
+
+  const safeOrders = orders || [];
   const stats = report
     ? [
         {
@@ -206,9 +243,9 @@ export default function AdminDashboardPage() {
               All orders <ArrowUpRight size={16} />
             </Link>
           </div>
-          {orders.length ? (
+          {safeOrders.length ? (
             <div className="divide-y divide-stone-100">
-              {orders.map((order) => (
+              {safeOrders.map((order) => (
                 <div
                   key={order.orderId}
                   className="flex flex-wrap items-center justify-between gap-3 py-3"
@@ -234,8 +271,22 @@ export default function AdminDashboardPage() {
             </div>
           ) : (
             <p className="py-8 text-center text-sm text-stone-500">
-              {report ? "No orders yet." : "Loading orders…"}
+              {loadingOrders ? "Loading orders…" : report ? "No orders yet." : "Loading orders…"}
             </p>
+          )}
+          {totalPages > 1 && (
+            <div className="mt-4 border-t border-stone-100 pt-3">
+              <PaginationNav
+                page={orderPage}
+                totalPages={totalPages}
+                total={totalOrders}
+                pageSize={5}
+                onPageChange={(p) => setOrderPage(p)}
+                isLoading={loadingOrders}
+                itemLabel="orders"
+                compact={true}
+              />
+            </div>
           )}
         </section>
         <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">

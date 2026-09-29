@@ -88,9 +88,9 @@ class ProductService {
         }
     }
     
-    async getAllProducts() {
+    async getAllProducts(params: { page?: number; pageSize?: number; search?: string; category?: string } = {}) {
         try {
-            const response = await axiosInstance.get<ProductListResponse>('/products');
+            const response = await axiosInstance.get<ProductListResponse>('/products', { params });
             return response.data;
         }
         catch (error: unknown) {

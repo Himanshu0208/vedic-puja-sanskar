@@ -43,8 +43,8 @@ axiosInstance.interceptors.response.use(
 );
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-    if (axios.isAxiosError<{ error?: string }>(error)) {
-        return error.response?.data?.error || error.message || fallback;
+    if (axios.isAxiosError<{ error?: string; message?: string }>(error)) {
+        return error.response?.data?.message || error.response?.data?.error || error.message || fallback;
     }
 
     if (error instanceof Error) {

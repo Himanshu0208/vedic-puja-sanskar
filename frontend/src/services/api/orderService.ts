@@ -1,15 +1,29 @@
-import axiosInstance, {getErrorMessage}  from "../axiosInstance";
-import { AddItemToCartRequest, CartResponse, CreateOrderRequest, CreateOrderResponse, RemoveItemFromRequest, SavedAddress, UserOrder, VerifyPaymentRequest, VerifyPaymentResponse } from "@/types/order";
+import axiosInstance, { getErrorMessage } from "../axiosInstance";
+import { AddItemToCartRequest, CartResponse, CreateOrderRequest, CreateOrderResponse, RemoveItemFromRequest, SavedAddress, UserOrderPage, VerifyPaymentRequest, VerifyPaymentResponse } from "@/types/order";
 
 class OrderService {
-  async getOrders(): Promise<UserOrder[]> {
-    const response = await axiosInstance.get<UserOrder[]>('/orders');
+  async getOrders(params: { page?: number; pageSize?: number } = {}): Promise<UserOrderPage> {
+    const response = await axiosInstance.get<UserOrderPage>('/orders', { params });
     return response.data;
   }
 
   async getAddresses(): Promise<SavedAddress[]> {
-    const response = await axiosInstance.get<SavedAddress[]>('/addresses');
-    return response.data;
+    try { return (await axiosInstance.get<SavedAddress[]>('/addresses')).data; }
+    catch (error: unknown) { throw new Error(getErrorMessage(error, 'Could not load saved addresses')); }
+  }
+
+  async saveAddress(address: Omit<SavedAddress, 'id'>, id?: number): Promise<SavedAddress> {
+    try {
+      const response = id
+        ? await axiosInstance.put<SavedAddress>(`/addresses/${id}`, address)
+        : await axiosInstance.post<SavedAddress>('/addresses', address);
+      return response.data;
+    } catch (error: unknown) { throw new Error(getErrorMessage(error, 'Could not save address')); }
+  }
+
+  async deleteAddress(id: number): Promise<void> {
+    try { await axiosInstance.delete(`/addresses/${id}`); }
+    catch (error: unknown) { throw new Error(getErrorMessage(error, 'Could not delete address')); }
   }
 
   async retryPayment(orderId: number): Promise<CreateOrderResponse> {

@@ -42,9 +42,9 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 // Async thunks
 export const signup = createAsyncThunk(
   'auth/signup',
-  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
+  async (credentials: { fullName: string; phone: string; gender: string; email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await authService.signup(credentials.email, credentials.password);
+      const response = await authService.signup(credentials);
       return response;
     } catch (error: unknown) {
       return rejectWithValue(getErrorMessage(error, 'Signup failed'));

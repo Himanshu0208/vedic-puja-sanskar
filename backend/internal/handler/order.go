@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -98,7 +100,8 @@ func (h *OrderHandler) Orders(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	orders, err := h.orderService.GetOrders(claims.UserID)
+	page, pageSize := pagination(r, 10)
+	orders, err := h.orderService.GetOrders(claims.UserID, page, pageSize)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "could not load orders")
 		return
@@ -107,8 +110,8 @@ func (h *OrderHandler) Orders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *OrderHandler) GetAddresses(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+	if r.Method == http.MethodPut || r.Method == http.MethodDelete {
+		h.AddressAction(w, r)
 		return
 	}
 	claims, ok := r.Context().Value("claims").(*jwt.Claims)
@@ -116,12 +119,82 @@ func (h *OrderHandler) GetAddresses(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	addresses, err := h.orderService.GetAddresses(claims.UserID)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "could not load addresses")
+	switch r.Method {
+	case http.MethodGet:
+		addresses, err := h.orderService.GetAddresses(claims.UserID)
+		if err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "could not load addresses")
+			return
+		}
+		utils.WriteJSON(w, http.StatusOK, addresses)
+	case http.MethodPost:
+		var address dto.ShippingAddress
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&address); err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		if err := h.validate.Struct(address); err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		created, err := h.orderService.CreateAddress(claims.UserID, address)
+		if err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "could not save address")
+			return
+		}
+		utils.WriteJSON(w, http.StatusCreated, created)
+	default:
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
+func (h *OrderHandler) AddressAction(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value("claims").(*jwt.Claims)
+	if !ok {
+		utils.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, addresses)
+	const prefix = "/api/v1/addresses/"
+	id, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, prefix))
+	if err != nil || id < 1 || r.URL.Path != prefix+strconv.Itoa(id) {
+		utils.WriteError(w, http.StatusBadRequest, "invalid address ID")
+		return
+	}
+	if r.Method == http.MethodDelete {
+		if err := h.orderService.DeleteAddress(claims.UserID, id); err != nil {
+			status := http.StatusInternalServerError
+			if errors.Is(err, sql.ErrNoRows) {
+				status = http.StatusNotFound
+			}
+			utils.WriteError(w, status, "could not delete address")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodPut {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var address dto.ShippingAddress
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&address); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(address); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	updated, err := h.orderService.UpdateAddress(claims.UserID, id, address)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, sql.ErrNoRows) {
+			status = http.StatusNotFound
+		}
+		utils.WriteError(w, status, "could not update address")
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, updated)
 }
 
 func (h *OrderHandler) OrderAction(w http.ResponseWriter, r *http.Request) {

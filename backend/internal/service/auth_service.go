@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
@@ -52,6 +53,9 @@ func (s *AuthService) Signup(req *dto.SignupRequest) (*dto.AuthResponse, error) 
 	}
 
 	user := &models.User{
+		FullName:  strings.TrimSpace(req.FullName),
+		Phone:     strings.TrimSpace(req.Phone),
+		Gender:    req.Gender,
 		Email:     req.Email,
 		Password:  hashedPassword,
 		Role:      models.RoleUser,
@@ -87,6 +91,33 @@ func (s *AuthService) Signup(req *dto.SignupRequest) (*dto.AuthResponse, error) 
 		AccessTokenExpiresIn:  s.acessTokenExpiry,
 		RefreshTokenExpiresIn: s.refreshTokenExpiry,
 	}, nil
+}
+
+func (s *AuthService) GetProfile(userID int) (*dto.ProfileResponse, error) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.ProfileResponse{ID: user.ID, FullName: user.FullName, Phone: user.Phone, Gender: user.Gender, Email: user.Email, Role: string(user.Role)}, nil
+}
+
+func (s *AuthService) UpdateProfile(userID int, req dto.UpdateProfileRequest) (*dto.ProfileResponse, error) {
+	if err := s.userRepo.UpdateProfile(userID, strings.TrimSpace(req.FullName), strings.TrimSpace(req.Phone), req.Gender); err != nil {
+		return nil, err
+	}
+	return s.GetProfile(userID)
+}
+
+func (s *AuthService) GetWishlist(userID int) ([]int, error) {
+	return s.userRepo.GetWishlist(userID)
+}
+
+func (s *AuthService) AddWishlist(userID, productID int) error {
+	return s.userRepo.AddWishlist(userID, productID)
+}
+
+func (s *AuthService) RemoveWishlist(userID, productID int) error {
+	return s.userRepo.RemoveWishlist(userID, productID)
 }
 
 // Login authenticates a user
@@ -133,7 +164,7 @@ func (s *AuthService) RefreshToken(refreshToken string, claims *jwt.Claims) (*dt
 	}
 
 	if userId != claims.UserID {
-		return nil, fmt.Errorf("bsdk apne baap ko mt sikha")
+		return nil, fmt.Errorf("unauthorized token owner")
 	}
 
 	accessToken, err := s.tokenManager.GenerateToken(claims.UserID, claims.Email, string(claims.Role), s.acessTokenExpiry)
@@ -175,6 +206,6 @@ func (s *AuthService) SaveRefreshToken(token string, userId int) error {
 	return s.userRepo.SaveRefreshToken(userId, token, expiredAt)
 }
 
-func (s *AuthService) GetAdminUsers() ([]dto.AdminUser, error) {
-	return s.userRepo.GetAdminUsers()
+func (s *AuthService) GetAdminUsers(page, pageSize int, search string) (*dto.AdminUserList, error) {
+	return s.userRepo.GetAdminUsers(page, pageSize, search)
 }

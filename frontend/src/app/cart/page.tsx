@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
-import { ShoppingCart } from 'lucide-react';
+import { ChevronDown, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 
 import { RootState, AppDispatch } from '@/store';
@@ -171,18 +171,32 @@ export default function CartPage() {
         <form onSubmit={handleCheckout} className="space-y-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6 lg:sticky lg:top-24">
           <section>
             <h2 className="text-xl font-semibold text-stone-900">Delivery details</h2>
-            {savedAddresses.length > 0 && <label className="mt-4 block text-sm font-medium text-stone-700">Saved address
-              <select className={inputClass} value={selectedAddressId ?? ''} onChange={(event) => {
-                const id = Number(event.target.value) || null;
-                setSelectedAddressId(id);
-                const address = savedAddresses.find((item) => item.id === id);
-                if (address) setShipping(address);
-                else setShipping({ fullName: '', phone: '', line1: '', line2: '', city: '', state: '', postalCode: '', country: 'IN' });
-              }}>
-                {savedAddresses.map((address) => <option key={address.id} value={address.id}>{address.fullName} — {address.line1}, {address.city}</option>)}
-                <option value="">Use a new address</option>
-              </select>
-            </label>}
+            {savedAddresses.length > 0 && (
+              <label className="mt-4 block text-sm font-medium text-stone-700">
+                Saved address
+                <div className="relative mt-1">
+                  <select
+                    className={`${inputClass} appearance-none pr-9`}
+                    value={selectedAddressId ?? ''}
+                    onChange={(event) => {
+                      const id = Number(event.target.value) || null;
+                      setSelectedAddressId(id);
+                      const address = savedAddresses.find((item) => item.id === id);
+                      if (address) setShipping(address);
+                      else setShipping({ fullName: '', phone: '', line1: '', line2: '', city: '', state: '', postalCode: '', country: 'IN' });
+                    }}
+                  >
+                    {savedAddresses.map((address) => (
+                      <option key={address.id} value={address.id}>
+                        {address.fullName} — {address.line1}, {address.city}
+                      </option>
+                    ))}
+                    <option value="">Use a new address</option>
+                  </select>
+                  <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                </div>
+              </label>
+            )}
             {!selectedAddressId && <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="text-sm font-medium text-stone-700">Full name<input className={inputClass} name="fullName" autoComplete="name" required maxLength={120} value={shipping.fullName} onChange={updateShipping} /></label>
               <label className="text-sm font-medium text-stone-700">Phone<input className={inputClass} name="phone" autoComplete="tel" type="tel" required minLength={8} maxLength={20} value={shipping.phone} onChange={updateShipping} /></label>

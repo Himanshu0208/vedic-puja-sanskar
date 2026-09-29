@@ -149,8 +149,11 @@ func (s *Server) setupRoutes() http.Handler {
 	protectedMux.HandleFunc("/api/v1/orders", orderHandler.Orders)
 	protectedMux.HandleFunc("/api/v1/orders/", orderHandler.OrderAction)
 	protectedMux.HandleFunc("/api/v1/addresses", orderHandler.GetAddresses)
+	protectedMux.HandleFunc("/api/v1/addresses/", orderHandler.AddressAction)
+	protectedMux.HandleFunc("/api/v1/auth/wishlist", authHandler.Wishlist)
 	protectedMux.HandleFunc("/api/v1/admin/users", adminHandler.Users)
 	protectedMux.HandleFunc("/api/v1/admin/orders", adminHandler.Orders)
+	protectedMux.HandleFunc("/api/v1/admin/orders/", adminHandler.OrderAction)
 	protectedMux.HandleFunc("/api/v1/admin/reports", adminHandler.Reports)
 	// wrap with auth middleware
 	protectedHandler := middleware.AuthMiddleware(s.authService)(protectedMux)

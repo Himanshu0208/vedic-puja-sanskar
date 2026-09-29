@@ -2,7 +2,7 @@
 
 import { useDispatch, useSelector } from 'react-redux';
 import { useEffect, useState } from 'react';
-import { LucideLogIn, LucideShoppingCart, LucideMenu, LucideX, LucidePhone, LucideTruck, LucidePackage, LucideUser, LucideLayoutDashboard } from 'lucide-react';
+import { LucideLogIn, LucideShoppingCart, LucideMenu, LucideX, LucidePhone, LucideTruck, LucidePackage, LucideLayoutDashboard, LucideSparkles } from 'lucide-react';
 import Link from 'next/link';
 
 import { RootState, AppDispatch } from '@/store';
@@ -69,11 +69,11 @@ export default function Header(_props: HeaderProps = {}) {
   type Visibility = 'always' | 'guest' | 'user' | 'admin';
 
   const navItems = [
+    { label: 'Collection',  icon: LucideSparkles, visibleTo: ['always'],        showOn: 'both', link: '/products' },
     { label: 'Contact Us',  icon: LucidePhone,   visibleTo: ['always'],         showOn: 'both', link: '#' },
     { label: 'Track Order', icon: LucideTruck,   visibleTo: ['guest'],  showOn: 'both', link: '/orders' },
     { label: 'My Orders',   icon: LucidePackage, visibleTo: ['user', 'admin'],   showOn: 'both', link: '/orders' },
     { label: 'Dashboard',   icon: LucideLayoutDashboard,  visibleTo: ['admin'],          showOn: 'both', link: '/admin/dashboard' },
-    { label: 'Profile',     icon: LucideUser,    visibleTo: ['user', 'admin'],  showOn: 'mobile', link: '#' },
     { label: 'Login',       icon: LucideLogIn,   visibleTo: ['guest'],          showOn: 'mobile', link: '#' },
   ];
 
@@ -89,7 +89,7 @@ export default function Header(_props: HeaderProps = {}) {
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100 text-xl">🕉️</span>
           <div><p className="text-sm font-bold tracking-tight text-stone-900">Vedic Puja Sanskar</p><p className="text-xs text-stone-500">Store administration</p></div>
         </div>
-        <div className="flex items-center gap-3"><span className="hidden rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:inline-flex">Admin workspace</span><button onClick={handleLogoutClick} className="rounded-xl border border-stone-200 px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700">Sign out</button></div>
+        <div className="flex items-center gap-3">{safeisAuthenticated && <Link href="/profile" title="Open your profile" className="hidden max-w-40 truncate rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-white sm:block">{safeUser?.email}</Link>}<span className="hidden rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 lg:inline-flex">Admin workspace</span><button onClick={handleLogoutClick} className="rounded-xl border border-stone-200 px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700">Sign out</button></div>
       </div>
     </header>;
   }
@@ -109,13 +109,13 @@ export default function Header(_props: HeaderProps = {}) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {safeisAuthenticated && <span className="hidden max-w-36 truncate rounded-full bg-stone-100 px-3 py-2 text-xs font-medium text-stone-600 lg:block">{safeUser?.email}</span>}
+        {safeisAuthenticated && <Link href="/profile" title="Open your profile" className="hidden max-w-36 truncate rounded-full bg-stone-100 px-3 py-2 text-xs font-medium text-stone-600 transition hover:bg-white hover:text-amber-900 sm:block">{safeUser?.email}</Link>}
         {safeUser?.role !== 'admin' && <button onClick={handleCartClick} aria-label="Open cart" className="relative grid h-10 w-10 place-items-center rounded-xl border border-amber-200 bg-white/70 text-stone-700 transition hover:bg-white hover:text-amber-900"><LucideShoppingCart size={19}/>{cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-amber-800 px-1 text-[10px] font-bold text-white">{cartCount}</span>}</button>}
         {safeisAuthenticated ? <button onClick={handleLogoutClick} className="hidden rounded-xl px-3 py-2 text-sm font-semibold text-stone-600 transition hover:bg-red-50 hover:text-red-700 sm:inline-flex">Sign out</button> : <button onClick={() => dispatch(openAuthModal('login'))} className="hidden items-center gap-2 rounded-xl bg-stone-900 px-3.5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-900 sm:inline-flex"><LucideLogIn size={16}/>Sign in</button>}
       </div>
     </nav>
 
-    {isMenuOpen && <div className="border-t border-amber-200/70 bg-gradient-to-b from-amber-50 to-orange-50 px-4 py-3 shadow-lg md:hidden"><div className="mx-auto flex max-w-7xl flex-col gap-1">{visibleNavItems.map(({ label, icon: Icon, link }) => <Link key={label} href={link} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-stone-700 transition hover:bg-white/80 hover:text-amber-900"><Icon size={18}/>{label}</Link>)}{safeisAuthenticated ? <button onClick={() => { setIsMenuOpen(false); handleLogoutClick(); }} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-stone-600 hover:bg-red-50 hover:text-red-700">Sign out</button> : <button onClick={() => { setIsMenuOpen(false); dispatch(openAuthModal('login')); }} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-amber-900 hover:bg-white/80"><LucideLogIn size={18}/>Sign in</button>}</div></div>}
+    {isMenuOpen && <div className="border-t border-amber-200/70 bg-gradient-to-b from-amber-50 to-orange-50 px-4 py-3 shadow-lg md:hidden"><div className="mx-auto flex max-w-7xl flex-col gap-1">{safeisAuthenticated && <Link href="/profile" onClick={() => setIsMenuOpen(false)} className="mb-1 truncate rounded-xl bg-white/70 px-3 py-3 text-sm font-semibold text-amber-950">{safeUser?.email}</Link>}{visibleNavItems.map(({ label, icon: Icon, link }) => <Link key={label} href={link} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-stone-700 transition hover:bg-white/80 hover:text-amber-900"><Icon size={18}/>{label}</Link>)}{safeisAuthenticated ? <button onClick={() => { setIsMenuOpen(false); handleLogoutClick(); }} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-stone-600 hover:bg-red-50 hover:text-red-700">Sign out</button> : <button onClick={() => { setIsMenuOpen(false); dispatch(openAuthModal('login')); }} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-amber-900 hover:bg-white/80"><LucideLogIn size={18}/>Sign in</button>}</div></div>}
 
     <AuthModal isOpen={isAuthModalOpen} onClose={handleCloseAuthModal} initialTab={authModalTab}/>
   </header>;

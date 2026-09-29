@@ -12,47 +12,46 @@ import { getAllCategories } from '@/store/slices/categorySlice';
 import { deleteProduct, getAllProducts } from '@/store/slices/productSlice';
 
 import { getProductImage } from '@/utils/pathResolution';
+import { PaginationNav } from '@/components/common/PaginationNav';
 
 const money = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
-const effectivePrice = (product: ProductResponse) => product.offerPrice > 0 && product.offerPrice < product.sellingPrice ? product.offerPrice : product.sellingPrice;
+const effectivePrice = (product: ProductResponse) => (product.offerPrice ?? 0) > 0 && (product.offerPrice ?? 0) < product.sellingPrice ? (product.offerPrice ?? product.sellingPrice) : product.sellingPrice;
 const productEarnings = (product: ProductResponse) => effectivePrice(product) - (product.price ?? 0);
 const productMargin = (product: ProductResponse) => effectivePrice(product) > 0 ? (productEarnings(product) / effectivePrice(product)) * 100 : 0;
-const customerDiscount = (product: ProductResponse) => product.sellingPrice > 0 && product.offerPrice > 0 && product.offerPrice < product.sellingPrice ? ((product.sellingPrice - product.offerPrice) / product.sellingPrice) * 100 : 0;
+const customerDiscount = (product: ProductResponse) => product.sellingPrice > 0 && (product.offerPrice ?? 0) > 0 && (product.offerPrice ?? 0) < product.sellingPrice ? ((product.sellingPrice - (product.offerPrice ?? 0)) / product.sellingPrice) * 100 : 0;
 
 export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [page, setPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
 
   const dispatch = useDispatch<AppDispatch>();
   const { category } = useSelector((state: RootState) => state.category);
-  const { products } = useSelector((state: RootState) => state.product);
+  const { products, total, totalPages, isLoading } = useSelector((state: RootState) => state.product);
 
   useEffect(() => {
     dispatch(getAllCategories());
-    dispatch(getAllProducts());
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => dispatch(getAllProducts({ page, pageSize: 20, search: searchTerm, category: selectedCategory === 'All' ? '' : selectedCategory })), 250);
+    return () => window.clearTimeout(timer);
+  }, [dispatch, page, searchTerm, selectedCategory]);
 
   const categories = category !== null ? category.categories.map((category) => category.name) : [];
   const categoryFilters = ['All', ...categories];
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === 'All' || product.category.name === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = products;
 
   const handleDelete = async (id: number) => {
     try {
-      await dispatch(deleteProduct(id));
+      await dispatch(deleteProduct(id)).unwrap();
+      await dispatch(getAllProducts({ page, pageSize: 20, search: searchTerm, category: selectedCategory === 'All' ? '' : selectedCategory }));
     } catch(error) {
-      console.log("failed to delete prodcut [", id,"]");
-      toast.error(error instanceof Error ? error.message : 'Failed to delete product');
+      toast.error(typeof error === 'string' ? error : error instanceof Error ? error.message : 'Failed to delete product');
     }
   };
 
@@ -86,13 +85,13 @@ export default function AdminProducts() {
 
       <section className="mb-6 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          <label className="relative min-w-0 flex-1"><span className="sr-only">Search catalog</span><LucideSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" size={18}/><input type="search" placeholder="Search by product or category" className="w-full rounded-xl border border-stone-200 bg-stone-50 py-3 pl-10 pr-4 text-sm text-stone-800 outline-none transition placeholder:text-stone-400 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/></label>
-          <div className="flex min-w-0 items-center gap-2"><LucideFilter size={17} className="shrink-0 text-stone-400"/><div className="flex gap-2 overflow-x-auto pb-1">{categoryFilters.map((category) => <button key={category} onClick={() => setSelectedCategory(category)} className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition ${selectedCategory === category ? 'bg-amber-100 text-amber-950 ring-1 ring-inset ring-amber-200' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}>{category}</button>)}</div></div>
+          <label className="relative min-w-0 flex-1"><span className="sr-only">Search catalog</span><LucideSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" size={18}/><input type="search" placeholder="Search by product or category" className="w-full rounded-xl border border-stone-200 bg-stone-50 py-3 pl-10 pr-4 text-sm text-stone-800 outline-none transition placeholder:text-stone-400 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}/></label>
+          <div className="flex min-w-0 items-center gap-2"><LucideFilter size={17} className="shrink-0 text-stone-400"/><div className="flex gap-2 overflow-x-auto pb-1">{categoryFilters.map((category) => <button key={category} onClick={() => {setSelectedCategory(category);setPage(1);}} className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition ${selectedCategory === category ? 'bg-amber-100 text-amber-950 ring-1 ring-inset ring-amber-200' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}>{category}</button>)}</div></div>
         </div>
-        <p className="mt-4 text-xs text-stone-500">Showing <span className="font-semibold text-stone-800">{filteredProducts.length}</span> of {products.length} items</p>
+        <p className="mt-4 text-xs text-stone-500">Showing <span className="font-semibold text-stone-800">{filteredProducts.length}</span> of {total} items</p>
       </section>
 
-      {filteredProducts.length > 0 ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      {isLoading && products.length === 0 ? <div className="rounded-2xl border border-stone-200 bg-white p-10 text-center text-stone-500">Loading catalog…</div> : filteredProducts.length > 0 ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {filteredProducts.map((product) => <article key={product.id} className="group overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-lg">
           <div className="relative h-48 overflow-hidden bg-stone-100"><img src={getProductImage(product.image_url)} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"/><span className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-sm ${(product.quantity ?? 0) > 0 ? 'bg-white/95 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{(product.quantity ?? 0) > 0 ? `${product.quantity} in stock` : 'Out of stock'}</span></div>
           <div className="p-4"><div className="flex items-center justify-between gap-3"><span className="truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900">{product.category.name}</span><span className="text-xs text-stone-400">#{product.id}</span></div>
@@ -104,12 +103,29 @@ export default function AdminProducts() {
         </article>)}
       </div> : <div className="grid min-h-64 place-items-center rounded-2xl border border-dashed border-stone-300 bg-white text-center"><div><span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-stone-100 text-stone-500"><PackageOpen size={22}/></span><h2 className="mt-3 font-semibold text-stone-900">No catalog items found</h2><p className="mt-1 text-sm text-stone-500">Try another search or category.</p></div></div>}
 
+      {totalPages > 1 && (
+        <div className="mt-6">
+          <PaginationNav
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={20}
+            onPageChange={(newPage) => {
+              setPage(newPage);
+            }}
+            isLoading={isLoading}
+            itemLabel="catalog products"
+          />
+        </div>
+      )}
+
       {/* Create Product Form Modal */}
       {showCreateModal && (
         <ProductForm
           onClose={() => {
             setShowCreateModal(false);
             setEditingProduct(null);
+            void dispatch(getAllProducts({ page, pageSize: 20, search: searchTerm, category: selectedCategory === 'All' ? '' : selectedCategory }));
           }}
           product={editingProduct}
         />

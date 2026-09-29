@@ -26,6 +26,7 @@ export const ProductCardUser = ({
   const dispatch = useDispatch<AppDispatch>();
   const inCart = selectedProductQuantities ? selectedProductQuantities.has(product.id) : false;
   const quantity = selectedProductQuantities ? selectedProductQuantities.get(product.id) : 0;
+  const isOutOfStock = product.inStock === false || (product.inStock === undefined && product.quantity !== undefined && product.quantity <= 0);
 
   const onIncreaseInCart = (productId : number) => {
     console.log('Increase in cart');
@@ -151,11 +152,12 @@ export const ProductCardUser = ({
             <div className="flex gap-2 w-full justify-between">
               <button
                 type="button"
+                disabled={isOutOfStock}
                 onClick={() => isAuthenticated ? onIncreaseInCart(product.id) : dispatch(openAuthModal('login'))}
                 aria-label={`Add ${product.name} to cart`}
-                className="flex-1 text-center text-sm font-semibold text-white bg-amber-600 px-3 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+                className="flex-1 text-center text-sm font-semibold text-white bg-amber-600 px-3 py-2 rounded-lg hover:bg-amber-700 transition-colors disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
               >
-                Add To Cart
+                {isOutOfStock ? 'Out of Stock' : 'Add To Cart'}
               </button>
             </div>
           )}

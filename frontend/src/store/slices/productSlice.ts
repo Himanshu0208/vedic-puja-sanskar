@@ -1,27 +1,32 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { CreateProductInput, ProductResponse, UpdateProductInput, DeleteProductResponse, ProductListResponse } from '@/types/product';
-import { productService} from '@/services/api/productService';
-import { RootState } from '..';
+import { productService } from '@/services/api/productService';
 
 export interface ProductState {
     products: ProductResponse[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
     isLoading: boolean;
     error: string | null;
 }
 
 const initialState: ProductState = {
     products: [],
+    total: 0,
+    page: 1,
+    pageSize: 12,
+    totalPages: 0,
     isLoading: false,
     error: null,
 };
 
 export const createProduct = createAsyncThunk(
     'products/createProduct',
-    async (productData: CreateProductInput, { rejectWithValue, getState }) => {
+    async (productData: CreateProductInput, { rejectWithValue }) => {
         try {
-            const state = getState() as RootState
-            const token = state.auth.token
-            const response = await productService.createProduct(productData, token);
+            const response = await productService.createProduct(productData);
             return response;
         }
         catch (error: unknown) {
@@ -32,11 +37,9 @@ export const createProduct = createAsyncThunk(
 
 export const updateProduct = createAsyncThunk(
     'products/updateProduct',
-    async ({ productId, productData }: { productId: number; productData: UpdateProductInput }, { rejectWithValue, getState }) => {
+    async ({ productId, productData }: { productId: number; productData: UpdateProductInput }, { rejectWithValue }) => {
         try {
-            const state = getState() as RootState
-            const token = state.auth.token
-            const response = await productService.updateProduct(productId, productData, token);
+            const response = await productService.updateProduct(productId, productData);
             return response;
         }
         catch (error: unknown) {
@@ -47,12 +50,9 @@ export const updateProduct = createAsyncThunk(
 
 export const deleteProduct = createAsyncThunk(
   'product/delete',
-  async (productId: number, { rejectWithValue, getState}) => {
+  async (productId: number, { rejectWithValue }) => {
     try {
-      const state = getState() as RootState;
-      const token = state.auth.token;
-
-      const response = await productService.deleteProduct(productId, token);
+      const response = await productService.deleteProduct(productId);
       return response;
     } catch (error: unknown) {
       return rejectWithValue(error instanceof Error ? error.message : 'Product deletion failed');
@@ -75,10 +75,9 @@ export const getProductById = createAsyncThunk(
 
 export const getAllProducts = createAsyncThunk(
     'products/getAllProducts',
-    async (_, { rejectWithValue }) => {
+    async (params: { page?: number; pageSize?: number; search?: string; category?: string } | undefined, { rejectWithValue }) => {
         try {
-            const response = await productService.getAllProducts();
-            return response.products;
+            return await productService.getAllProducts(params);
         }
         catch (error: unknown) {
             return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch products');
@@ -97,9 +96,27 @@ const productSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(getAllProducts.fulfilled, (state, action: PayloadAction<ProductResponse[]>) => {
+      .addCase(getAllProducts.fulfilled, (state, action: PayloadAction<ProductListResponse | ProductResponse[]>) => {
         state.isLoading = false;
-        state.products = action.payload;
+        if (Array.isArray(action.payload)) {
+          state.products = action.payload;
+          state.total = action.payload.length;
+          state.page = 1;
+          state.pageSize = action.payload.length || 12;
+          state.totalPages = 1;
+        } else if (action.payload && Array.isArray(action.payload.products)) {
+          state.products = action.payload.products;
+          state.total = action.payload.total ?? action.payload.products.length;
+          state.page = action.payload.page ?? 1;
+          state.pageSize = action.payload.pageSize ?? 12;
+          state.totalPages = action.payload.totalPages ?? 1;
+        } else {
+          state.products = [];
+          state.total = 0;
+          state.page = 1;
+          state.pageSize = 12;
+          state.totalPages = 0;
+        }
       })
       .addCase(getAllProducts.rejected, (state, action) => {
         state.isLoading = false;
@@ -139,7 +156,6 @@ const productSlice = createSlice({
         state.error = action.payload as string;
       });
 
-
     // deleteProduct
     builder
       .addCase(deleteProduct.pending, (state) => {
@@ -148,7 +164,6 @@ const productSlice = createSlice({
       })
       .addCase(deleteProduct.fulfilled, (state, action: PayloadAction<DeleteProductResponse>) => {
         state.isLoading = false;
-
         const deletedProductId = action.payload.id;
         if(deletedProductId !== -1) {
           state.products = state.products.filter((product) => product.id !== deletedProductId);
@@ -181,4 +196,4 @@ const productSlice = createSlice({
   },
 });
 
-export default productSlice.reducer;    
+export default productSlice.reducer;

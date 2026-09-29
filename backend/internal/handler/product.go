@@ -40,14 +40,14 @@ func (h *ProductHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	
 	role := "user"
 	claims, isAuthorized := r.Context().Value("claims").(*jwt.Claims)
 	if isAuthorized {
 		role = claims.Role
 	}
 
-	response, err := h.productService.GetAllProducts(role)
+	page, pageSize := pagination(r, 12)
+	response, err := h.productService.GetAllProducts(role, page, pageSize, r.URL.Query().Get("search"), r.URL.Query().Get("category"))
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -82,7 +82,7 @@ func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	product, err := h.productService.GetProductByID(id, userID, role, isAuthorized);
+	product, err := h.productService.GetProductByID(id, userID, role, isAuthorized)
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, err.Error())
 		return
@@ -193,7 +193,6 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "image is required")
 		return
 	}
-
 
 	product, err := h.productService.UpdateProduct(req.ID, req, claims.UserID, imagePath)
 	if err != nil {

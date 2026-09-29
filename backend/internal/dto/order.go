@@ -45,6 +45,14 @@ type UserOrderResponse struct {
 	Items         []OrderItemResponse `json:"items"`
 }
 
+type UserOrderListResponse struct {
+	Orders     []UserOrderResponse `json:"orders"`
+	Total      int                 `json:"total"`
+	Page       int                 `json:"page"`
+	PageSize   int                 `json:"pageSize"`
+	TotalPages int                 `json:"totalPages"`
+}
+
 type OrderActionResponse struct {
 	OrderID int    `json:"orderId"`
 	Status  string `json:"status"`

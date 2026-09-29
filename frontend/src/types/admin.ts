@@ -6,6 +6,14 @@ export interface AdminUser {
   orderCount: number;
 }
 
+export interface AdminUserPage {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface AdminOrder {
   orderId: number;
   customerEmail: string;
@@ -15,6 +23,14 @@ export interface AdminOrder {
   totalAmount: number;
   currency: string;
   createdAt: string;
+}
+
+export interface AdminOrderPage {
+  orders: AdminOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface AdminReport {
