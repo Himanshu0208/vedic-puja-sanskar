@@ -60,10 +60,40 @@ type AdminReport struct {
 	PendingOrders       int                `json:"pendingOrders"`
 	DeliveredOrders     int                `json:"deliveredOrders"`
 	Revenue             float64            `json:"revenue"`
+	RefundedRevenue     float64            `json:"refundedRevenue"`
 	CODRevenue          float64            `json:"codRevenue"`
 	RazorpayRevenue     float64            `json:"razorpayRevenue"`
 	CODReceivable       float64            `json:"codReceivable"`
 	CODReceivableOrders int                `json:"codReceivableOrders"`
 	MonthlyRevenue      []MonthlyRevenue   `json:"monthlyRevenue"`
 	OrderStatuses       []OrderStatusCount `json:"orderStatuses"`
+}
+
+type AdminReturn struct {
+	ID                int        `json:"id"`
+	OrderID           int        `json:"orderId"`
+	Amount            float64    `json:"amount"`
+	Currency          string     `json:"currency"`
+	UserID            int        `json:"userId"`
+	CustomerEmail     string     `json:"customerEmail"`
+	Description       string     `json:"description"`
+	Reason            string     `json:"reason"`
+	MediaURLs         []string   `json:"mediaUrls"`
+	Status            string     `json:"status"`
+	AdminRemarks      string     `json:"adminRemarks"`
+	PaymentMethod     string     `json:"paymentMethod"`
+	PaymentStatus     string     `json:"paymentStatus"`
+	RefundID          string     `json:"refundId"`
+	RefundReference   string     `json:"refundReference"`
+	ReceivedAt        *time.Time `json:"receivedAt,omitempty"`
+	RefundProcessedAt *time.Time `json:"refundProcessedAt,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+}
+
+type AdminReturnList struct {
+	Returns    []AdminReturn `json:"returns"`
+	Total      int           `json:"total"`
+	Page       int           `json:"page"`
+	PageSize   int           `json:"pageSize"`
+	TotalPages int           `json:"totalPages"`
 }

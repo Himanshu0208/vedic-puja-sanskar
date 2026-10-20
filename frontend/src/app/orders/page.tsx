@@ -12,6 +12,7 @@ import { getProductImage } from '@/utils/pathResolution';
 import { loadRazorpay, type RazorpaySuccess, type RazorpayFailure, type RazorpayOptions } from '@/utils/razorpay';
 import type { CreateOrderResponse, UserOrder, UserOrderPage } from '@/types/order';
 import { PaginationNav } from '@/components/common/PaginationNav';
+import ReturnRequestModal from '@/components/ReturnRequestModal';
 
 const money = (amount: number, currency: string) => new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(amount);
 const formatStatus = (status: string) => status.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -27,6 +28,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyOrderId, setBusyOrderId] = useState<number | null>(null);
+  const [returnOrderId, setReturnOrderId] = useState<number | null>(null);
 
   const refreshOrders = useCallback(async (targetPage = page) => {
     const data: unknown = await orderService.getOrders({ page: targetPage, pageSize: 10 });
@@ -92,16 +94,10 @@ export default function OrdersPage() {
     finally { setBusyOrderId(null); }
   };
 
-  const requestReturn = async (orderId: number) => {
-    setBusyOrderId(orderId);
-    try { await orderService.requestReturn(orderId); await refreshOrders(page); }
-    catch (err) { toast.error(err instanceof Error ? err.message : 'Could not submit the return request.'); }
-    finally { setBusyOrderId(null); }
-  };
-
   const safeOrders = orders || [];
 
-  return <main className="mx-auto min-h-[60vh] max-w-5xl px-4 py-10 sm:px-6 lg:py-14">
+  return <>
+  <main className="mx-auto min-h-[60vh] max-w-5xl px-4 py-10 sm:px-6 lg:py-14">
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-800">Your account</p><h1 className="mt-2 font-serif text-3xl font-semibold text-stone-900 sm:text-4xl">Your orders</h1><p className="mt-2 text-stone-600">Order details and delivery updates, all in one place.</p></div>
       {authenticated && !loading && total > 0 && <span className="rounded-full bg-[#fdfbf7] px-4 py-2 text-sm font-semibold text-stone-700 ring-1 ring-amber-900/10">{total} orders placed</span>}
@@ -134,7 +130,7 @@ export default function OrdersPage() {
           <h2 className="text-lg font-semibold text-stone-900">{order.status === 'DELIVERED' ? 'Delivered' : order.status === 'PENDING_PAYMENT' ? 'Payment required' : order.status === 'CANCELLED' ? 'Order cancelled' : `Order ${formatStatus(order.status).toLowerCase()}`}</h2>
           <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset ${statusClass(order.status)}`}><span className="h-1.5 w-1.5 rounded-full bg-current"/>{formatStatus(order.status)}</span>
         </div>
-        {order.returnStatus && <p className="mx-5 mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800 sm:mx-6">Return requested · We’ll share an update when it’s reviewed.</p>}
+        {order.returnStatus === 'RETURN_REJECTED' ? <div className="mx-5 mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 sm:mx-6"><p className="font-semibold">Your return request was declined.</p>{order.returnRemarks && <p className="mt-1">Admin remarks: {order.returnRemarks}</p>}<p className="mt-1">Please contact support if you need help with this decision.</p></div> : order.returnStatus === 'RETURN_APPROVED' ? <p className="mx-5 mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 sm:mx-6">Return approved · once we receive the item, the refund will be processed.</p> : order.returnStatus && <p className="mx-5 mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800 sm:mx-6">Return requested · We’ll share an update when it’s reviewed.</p>}
         {canRetryPayment && <div className="mx-5 mt-4 flex flex-col justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:mx-6 sm:flex-row sm:items-center"><div><p className="font-semibold text-amber-950">Your order is waiting for payment</p><p className="mt-0.5 text-sm text-amber-900/80">Complete payment to confirm this order.</p></div><button disabled={isBusy} onClick={() => void retryPayment(order.orderId)} className="shrink-0 rounded-full bg-amber-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-900 disabled:opacity-60">{isBusy ? 'Opening checkout…' : 'Complete payment'}</button></div>}
 
         <div className="divide-y divide-stone-100 px-5 sm:px-6">
@@ -149,7 +145,7 @@ export default function OrdersPage() {
           <span className="inline-flex items-center gap-1.5 text-xs text-stone-500"><PackageCheck size={15}/> Thank you for shopping with us</span>
           <div className="flex flex-wrap gap-2">
             {canCancel && <button disabled={isBusy} onClick={() => void cancelOrder(order.orderId)} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"><X size={15}/> Cancel order</button>}
-            {canReturn && <button disabled={isBusy} onClick={() => void requestReturn(order.orderId)} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-amber-700 hover:bg-amber-50 hover:text-amber-900 disabled:opacity-50"><RotateCcw size={15}/> Request return</button>}
+            {canReturn && <button disabled={isBusy} onClick={() => setReturnOrderId(order.orderId)} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-amber-700 hover:bg-amber-50 hover:text-amber-900 disabled:opacity-50"><RotateCcw size={15}/> Request return</button>}
             {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && <span className="inline-flex items-center gap-1.5 px-2 text-xs text-stone-500"><Clock3 size={14}/> Status updates as your order moves</span>}
           </div>
         </footer>
@@ -172,5 +168,7 @@ export default function OrdersPage() {
         />
       </div>
     )}
-  </main>;
+  </main>
+  {returnOrderId && <ReturnRequestModal orderId={returnOrderId} onClose={() => setReturnOrderId(null)} onSuccess={() => void refreshOrders(page)} />}
+  </>;
 }

@@ -144,9 +144,10 @@ export default function AdminDashboardPage() {
           <div className="grid gap-5 lg:grid-cols-2">
             <AdminDonutChart
               title="Paid revenue"
-              total={report.revenue}
+              total={report.revenue + report.refundedRevenue}
               totalDisplay={formatMoney(report.revenue)}
-              totalCaption="paid total"
+              totalCaption="net retained"
+              shareCaption="of gross collected"
               segments={[
                 {
                   label: "COD collected",
@@ -159,6 +160,12 @@ export default function AdminDashboardPage() {
                   value: report.razorpayRevenue,
                   color: "#b45309",
                   displayValue: formatMoney(report.razorpayRevenue),
+                },
+                {
+                  label: "Refunded",
+                  value: report.refundedRevenue,
+                  color: "#e11d48",
+                  displayValue: formatMoney(report.refundedRevenue),
                 },
               ]}
             />

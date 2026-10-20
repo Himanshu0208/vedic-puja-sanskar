@@ -39,6 +39,7 @@ type UserOrderResponse struct {
 	PaymentStatus string              `json:"paymentStatus"`
 	PaymentMethod string              `json:"paymentMethod"`
 	ReturnStatus  string              `json:"returnStatus,omitempty"`
+	ReturnRemarks string              `json:"returnRemarks,omitempty"`
 	TotalAmount   float64             `json:"totalAmount"`
 	Currency      string              `json:"currency"`
 	CreatedAt     time.Time           `json:"createdAt"`

@@ -10,6 +10,7 @@ import {
   LucideChartLine,
   LucidePackageCheck,
   LucideMessageCircleHeart,
+  LucideRotateCcw,
 } from 'lucide-react';
 
 export const headerNavItems = [
@@ -26,5 +27,6 @@ export const adminNavItems = [
   { label: 'Catalog', icon: LucidePackagePlus, link: '/admin/products' },
   { label: 'Reports', icon: LucideChartLine, link: '/admin/reports' },
   { label: 'Orders', icon: LucidePackageCheck, link: '/admin/orders' },
+  { label: 'Returns', icon: LucideRotateCcw, link: '/admin/returns' },
   { label: 'Feedbacks', icon: LucideMessageCircleHeart, link: '/admin/feedbacks' },
 ];

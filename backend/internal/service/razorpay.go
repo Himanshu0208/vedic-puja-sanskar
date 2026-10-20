@@ -56,6 +56,41 @@ func (c *RazorpayClient) GetPayment(ctx context.Context, paymentID string) (*raz
 	return &payment, nil
 }
 
+func (c *RazorpayClient) RefundPayment(ctx context.Context, paymentID string, returnID int) (string, error) {
+	path := "/payments/" + url.PathEscape(paymentID) + "/refunds"
+	var existing struct {
+		Items []struct {
+			ID        string            `json:"id"`
+			PaymentID string            `json:"payment_id"`
+			Notes     map[string]string `json:"notes"`
+		} `json:"items"`
+	}
+	if err := c.request(ctx, http.MethodGet, path, nil, &existing); err != nil {
+		return "", err
+	}
+	returnKey := fmt.Sprint(returnID)
+	for _, item := range existing.Items {
+		if item.PaymentID == paymentID && item.Notes["return_request_id"] == returnKey {
+			return item.ID, nil
+		}
+	}
+	body, err := json.Marshal(map[string]any{"notes": map[string]string{"return_request_id": fmt.Sprint(returnID)}})
+	if err != nil {
+		return "", err
+	}
+	var refund struct {
+		ID        string `json:"id"`
+		PaymentID string `json:"payment_id"`
+	}
+	if err := c.request(ctx, http.MethodPost, "/payments/"+url.PathEscape(paymentID)+"/refund", bytes.NewReader(body), &refund); err != nil {
+		return "", err
+	}
+	if refund.ID == "" || refund.PaymentID != paymentID {
+		return "", fmt.Errorf("Razorpay returned an invalid refund")
+	}
+	return refund.ID, nil
+}
+
 func (c *RazorpayClient) request(ctx context.Context, method, path string, body io.Reader, target any) error {
 	req, err := http.NewRequestWithContext(ctx, method, razorpayAPI+path, body)
 	if err != nil {

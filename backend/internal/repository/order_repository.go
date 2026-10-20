@@ -234,10 +234,11 @@ func (r *OrderRepository) GetOrdersByUserID(userID, page, pageSize int) (*dto.Us
 			ORDER BY created_at DESC, id DESC
 			LIMIT $2 OFFSET $3
 		)
-		SELECT po.id, po.status, po.return_status, COALESCE(p.status,'unknown'), COALESCE(p.method,'unknown'), po.total_amount, po.currency, po.created_at,
+		SELECT po.id, po.status, po.return_status, COALESCE(rr.admin_remarks,''), COALESCE(p.status,'unknown'), COALESCE(p.method,'unknown'), po.total_amount, po.currency, po.created_at,
 			oi.product_name, COALESCE(pr.image_url,''), oi.quantity, oi.unit_price, oi.discounted_unit_price
 		FROM paged_orders po
 		LEFT JOIN payments p ON p.order_id = po.id
+		LEFT JOIN return_requests rr ON rr.order_id = po.id
 		LEFT JOIN order_items oi ON oi.order_id = po.id
 		LEFT JOIN products pr ON pr.id = oi.product_id
 		ORDER BY po.created_at DESC, po.id DESC, oi.id`, userID, pageSize, (page-1)*pageSize)
@@ -253,7 +254,7 @@ func (r *OrderRepository) GetOrdersByUserID(userID, page, pageSize int) (*dto.Us
 		var quantity sql.NullInt64
 		var unitPrice, amount sql.NullFloat64
 		var order dto.UserOrderResponse
-		if err := rows.Scan(&orderID, &order.Status, &order.ReturnStatus, &order.PaymentStatus, &order.PaymentMethod, &order.TotalAmount, &order.Currency, &order.CreatedAt, &itemName, &imageURL, &quantity, &unitPrice, &amount); err != nil {
+		if err := rows.Scan(&orderID, &order.Status, &order.ReturnStatus, &order.ReturnRemarks, &order.PaymentStatus, &order.PaymentMethod, &order.TotalAmount, &order.Currency, &order.CreatedAt, &itemName, &imageURL, &quantity, &unitPrice, &amount); err != nil {
 			return nil, err
 		}
 		index, exists := byID[orderID]
@@ -351,7 +352,7 @@ func (r *OrderRepository) UpdateOrderStatus(orderID int, newStatus string) error
 		return err
 	}
 
-	if _, err := tx.Exec(`UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2`, newStatus, orderID); err != nil {
+	if _, err := tx.Exec(`UPDATE orders SET status=$1, delivered_at=CASE WHEN $1='DELIVERED' THEN COALESCE(delivered_at,NOW()) ELSE delivered_at END, updated_at=NOW() WHERE id=$2`, newStatus, orderID); err != nil {
 		return err
 	}
 
@@ -403,6 +404,7 @@ func (r *OrderRepository) GetAdminOrders(page, pageSize int, search, status, pay
 
 func (r *OrderRepository) GetAdminReport() (*dto.AdminReport, error) {
 	report := &dto.AdminReport{MonthlyRevenue: make([]dto.MonthlyRevenue, 0, 6), OrderStatuses: make([]dto.OrderStatusCount, 0)}
+	var codRefundedRevenue float64
 	err := r.db.QueryRow(`SELECT
 		(SELECT COUNT(*) FROM users WHERE is_admin=false),
 		(SELECT COUNT(*) FROM products),
@@ -415,6 +417,8 @@ func (r *OrderRepository) GetAdminReport() (*dto.AdminReport, error) {
 		COUNT(o.id) FILTER (WHERE o.status='PENDING_PAYMENT'),
 		COUNT(o.id) FILTER (WHERE o.status='DELIVERED'),
 		COALESCE(SUM(p.amount) FILTER (WHERE p.status='success'),0),
+		COALESCE((SELECT SUM(p2.amount) FROM return_requests rr JOIN payments p2 ON p2.order_id=rr.order_id WHERE rr.status='APPROVED' AND p2.status='success' AND p2.method IN ('COD','RAZORPAY')),0),
+		COALESCE((SELECT SUM(p2.amount) FROM return_requests rr JOIN payments p2 ON p2.order_id=rr.order_id WHERE rr.status='APPROVED' AND p2.status='success' AND p2.method='COD'),0),
 		COALESCE(SUM(p.amount) FILTER (WHERE p.status='success' AND p.method='COD'),0),
 		COALESCE(SUM(p.amount) FILTER (WHERE p.status='success' AND p.method='RAZORPAY'),0),
 		COALESCE(SUM(o.total_amount) FILTER (WHERE p.method='COD' AND p.status='pending' AND o.status NOT IN ('CANCELLED','RTO') AND COALESCE(o.return_status,'') <> 'RETURN_COMPLETED'),0),
@@ -422,11 +426,14 @@ func (r *OrderRepository) GetAdminReport() (*dto.AdminReport, error) {
 		FROM orders o LEFT JOIN payments p ON p.order_id=o.id`).Scan(
 		&report.Customers, &report.Products, &report.Orders, &report.PaidOrders, &report.CODOrders, &report.RazorpayOrders,
 		&report.CancelledOrders, &report.ReturnedOrders, &report.OtherOrders, &report.PendingOrders, &report.DeliveredOrders, &report.Revenue,
-		&report.CODRevenue, &report.RazorpayRevenue,
+		&report.RefundedRevenue, &codRefundedRevenue, &report.CODRevenue, &report.RazorpayRevenue,
 		&report.CODReceivable, &report.CODReceivableOrders)
 	if err != nil {
 		return nil, err
 	}
+	report.Revenue -= report.RefundedRevenue
+	report.CODRevenue -= codRefundedRevenue
+	report.RazorpayRevenue -= report.RefundedRevenue - codRefundedRevenue
 	statusRows, err := r.db.Query(`SELECT order_status, COUNT(*)
 		FROM (
 			SELECT CASE
