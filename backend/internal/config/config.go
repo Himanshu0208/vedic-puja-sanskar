@@ -10,23 +10,12 @@ type Config struct {
 	Server   ServerConfig
 	JWT      JWTConfig
 	Database DatabaseConfig
-	Auth     AuthConfig
 	Razorpay RazorpayConfig
 }
 
 type RazorpayConfig struct {
 	KeyID  string
 	Secret string
-}
-
-// AuthConfig holds authentication-related configuration
-type AuthConfig struct {
-	DefaultAdminEmail       string
-	DefaultAdminPassword    string
-	DefaultDevUserEmail     string
-	DefaultDevUserPassword  string
-	DefaultDevAdminEmail    string
-	DefaultDevAdminPassword string
 }
 
 // ServerConfig holds server-related configuration
@@ -67,14 +56,6 @@ func Load() Config {
 		Database: DatabaseConfig{
 			URL:              getEnv("POSTGRES_DATABASE_URL", ""),
 			ImageStoragePath: getEnv("IMAGE_STORAGE_PATH", "./uploads"),
-		},
-		Auth: AuthConfig{
-			DefaultAdminEmail:       getEnv("DEFAULT_ADMIN_EMAIL", "admin@vedic-puja.com"),
-			DefaultAdminPassword:    getEnv("DEFAULT_ADMIN_PASSWORD", "Admin@123"),
-			DefaultDevAdminEmail:    getEnv("DEFAULT_DEV_ADMIN_EMAIL", "dev-admin@vedic-puja.com"),
-			DefaultDevAdminPassword: getEnv("DEFAULT_DEV_ADMIN_PASSWORD", "Dev@123"),
-			DefaultDevUserEmail:     getEnv("DEFAULT_DEV_USER_EMAIL", "dev-user@vedic-puja.com"),
-			DefaultDevUserPassword:  getEnv("DEFAULT_DEV_USER_PASSWORD", "Dev@123"),
 		},
 		Razorpay: RazorpayConfig{
 			KeyID:  getEnv("RAZORPAY_KEY_ID", ""),

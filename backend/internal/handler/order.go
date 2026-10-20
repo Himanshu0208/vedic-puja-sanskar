@@ -17,12 +17,14 @@ import (
 )
 
 type OrderHandler struct {
-	orderService *service.OrderService
-	validate     *validator.Validate
+	orderService  *service.OrderService
+	returnService *service.ReturnService
+	uploadsDir    string
+	validate      *validator.Validate
 }
 
-func NewOrderHandler(orderService *service.OrderService, validate *validator.Validate) *OrderHandler {
-	return &OrderHandler{orderService: orderService, validate: validate}
+func NewOrderHandler(orderService *service.OrderService, returnService *service.ReturnService, uploadsDir string, validate *validator.Validate) *OrderHandler {
+	return &OrderHandler{orderService: orderService, returnService: returnService, uploadsDir: uploadsDir, validate: validate}
 }
 
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
@@ -230,7 +232,37 @@ func (h *OrderHandler) OrderAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "return":
-		err = h.orderService.RequestReturn(claims.UserID, orderID)
+		// multipart return request with description + media uploads
+		if parseErr := r.ParseMultipartForm(10 << 20); parseErr != nil {
+			utils.WriteError(w, http.StatusBadRequest, "invalid multipart form")
+			return
+		}
+		description := strings.TrimSpace(r.FormValue("description"))
+		reason := strings.TrimSpace(r.FormValue("reason"))
+		if reason == "" {
+			utils.WriteError(w, http.StatusBadRequest, "return reason is required")
+			return
+		}
+		if description == "" {
+			utils.WriteError(w, http.StatusBadRequest, "description is required")
+			return
+		}
+		var mediaURLs []string
+		for _, fh := range r.MultipartForm.File["media"] {
+			f, openErr := fh.Open()
+			if openErr != nil {
+				utils.WriteError(w, http.StatusBadRequest, "could not read uploaded file")
+				return
+			}
+			url, saveErr := utils.SaveReturnMedia(f, fh, h.uploadsDir)
+			f.Close()
+			if saveErr != nil {
+				utils.WriteError(w, http.StatusBadRequest, saveErr.Error())
+				return
+			}
+			mediaURLs = append(mediaURLs, url)
+		}
+		err = h.returnService.CreateReturnRequest(claims.UserID, orderID, reason, description, mediaURLs)
 		if err == nil {
 			utils.WriteJSON(w, http.StatusOK, dto.OrderActionResponse{OrderID: orderID, Status: "RETURN_REQUESTED"})
 			return

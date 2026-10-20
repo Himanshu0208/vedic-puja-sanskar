@@ -1,0 +1,1 @@
+ALTER TABLE return_requests ADD COLUMN IF NOT EXISTS received_at TIMESTAMP;

@@ -60,6 +60,7 @@ export interface UserOrder {
   paymentStatus: string;
   paymentMethod: 'razorpay' | 'cod';
   returnStatus?: string;
+  returnRemarks?: string;
   totalAmount: number;
   currency: string;
   createdAt: string;

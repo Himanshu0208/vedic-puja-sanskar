@@ -35,8 +35,14 @@ class OrderService {
     await axiosInstance.post(`/orders/${orderId}/cancel`);
   }
 
-  async requestReturn(orderId: number): Promise<void> {
-    await axiosInstance.post(`/orders/${orderId}/return`);
+  async submitReturnRequest(orderId: number, reason: string, description: string, files: File[]): Promise<void> {
+    const form = new FormData();
+    form.append('reason', reason);
+    form.append('description', description);
+    files.forEach(f => form.append('media', f));
+    await axiosInstance.post(`/orders/${orderId}/return`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   }
 
   async createOrder(request: CreateOrderRequest): Promise<CreateOrderResponse> {

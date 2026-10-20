@@ -15,7 +15,6 @@ import (
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/config"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/handler"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/middleware"
-	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/repository"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/service"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/jwt"
@@ -32,6 +31,7 @@ type Server struct {
 	categoryService *service.CategoryService
 	cartService     *service.CartService
 	orderService    *service.OrderService
+	returnService   *service.ReturnService
 	dbConn          *db.Connection
 	validate        *validator.Validate // ✅ central validator
 	requestLogger   *slog.Logger
@@ -56,6 +56,7 @@ func New(cfg config.Config) (*Server, error) {
 	categoryRepo := repository.NewCategoryRepository(dbConn.DB)
 	cartRepo := repository.NewCartRepository(dbConn.DB)
 	orderRepo := repository.NewOrderRepository(dbConn.DB)
+	returnRepo := repository.NewReturnRepository(dbConn.DB)
 
 	// JWT
 	tokenManager := jwt.NewTokenManager(cfg.JWT.Secret)
@@ -66,15 +67,11 @@ func New(cfg config.Config) (*Server, error) {
 	categoryService := service.NewCategoryService(categoryRepo)
 	cartService := service.NewCartService(cartRepo, productRepo)
 	orderService := service.NewOrderService(orderRepo, cfg.Razorpay.KeyID, cfg.Razorpay.Secret)
+	returnService := service.NewReturnService(returnRepo, service.NewRazorpayClient(cfg.Razorpay.KeyID, cfg.Razorpay.Secret))
 
 	// ✅ Validator (single instance)
 	validate := validator.New()
 	validate.RegisterValidation("strong_password", utils.ValidateStrongPassword)
-
-	// Default users
-	createDefaultAccount(userRepo, cfg.Auth.DefaultAdminEmail, cfg.Auth.DefaultAdminPassword, models.RoleAdmin)
-	createDefaultAccount(userRepo, cfg.Auth.DefaultDevAdminEmail, cfg.Auth.DefaultDevAdminPassword, models.RoleAdmin)
-	createDefaultAccount(userRepo, cfg.Auth.DefaultDevUserEmail, cfg.Auth.DefaultDevUserPassword, models.RoleUser)
 
 	server := &Server{
 		config:          cfg,
@@ -83,6 +80,7 @@ func New(cfg config.Config) (*Server, error) {
 		categoryService: categoryService,
 		cartService:     cartService,
 		orderService:    orderService,
+		returnService:   returnService,
 		dbConn:          dbConn,
 		validate:        validate,
 		requestLogger:   requestLogger,
@@ -108,7 +106,8 @@ func (s *Server) setupRoutes() http.Handler {
 	productHandler := handler.NewProductHandler(s.productService, uploadsDir, s.validate)
 	categoryHandler := handler.NewCategoryHandler(s.categoryService, s.validate)
 	cartHandler := handler.NewCartHandler(s.cartService, s.validate)
-	orderHandler := handler.NewOrderHandler(s.orderService, s.validate)
+	orderHandler := handler.NewOrderHandler(s.orderService, s.returnService, uploadsDir, s.validate)
+	returnHandler := handler.NewReturnHandler(s.returnService, uploadsDir)
 	adminHandler := handler.NewAdminHandler(s.authService, s.orderService)
 
 	// ---------------- PUBLIC ROUTES ----------------
@@ -155,6 +154,10 @@ func (s *Server) setupRoutes() http.Handler {
 	protectedMux.HandleFunc("/api/v1/admin/orders", adminHandler.Orders)
 	protectedMux.HandleFunc("/api/v1/admin/orders/", adminHandler.OrderAction)
 	protectedMux.HandleFunc("/api/v1/admin/reports", adminHandler.Reports)
+	protectedMux.HandleFunc("/api/v1/admin/returns", returnHandler.AdminListReturns)
+	protectedMux.HandleFunc("/api/v1/admin/returns/manual-refund/", returnHandler.AdminRecordCODRefund)
+	protectedMux.HandleFunc("/api/v1/admin/returns/refund/", returnHandler.AdminProcessRefund)
+	protectedMux.HandleFunc("/api/v1/admin/returns/", returnHandler.AdminReviewReturn)
 	// wrap with auth middleware
 	protectedHandler := middleware.AuthMiddleware(s.authService)(protectedMux)
 
@@ -204,35 +207,4 @@ func (s *Server) Wait() <-chan error {
 	}()
 	time.Sleep(100 * time.Millisecond)
 	return errChan
-}
-
-// ---------------- DEFAULT USER ----------------
-
-func createDefaultAccount(userRepo *repository.UserRepository, email, password string, role models.UserRole) {
-
-	if userRepo.UserExists(email) {
-		return
-	}
-
-	hashedPassword, err := utils.HashPassword(password)
-	if err != nil {
-		log.Println("hash error:", err)
-		return
-	}
-
-	user := &models.User{
-		Email:     email,
-		Password:  hashedPassword,
-		Role:      role,
-		IsAdmin:   role == models.RoleAdmin,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	if _, err := userRepo.SaveUser(user); err != nil {
-		log.Println("save error:", err)
-		return
-	}
-
-	log.Println("Default user created:", email)
 }
