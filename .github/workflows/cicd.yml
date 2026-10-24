@@ -48,6 +48,9 @@ jobs:
         env:
           IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/vedic-puja-sanskar-backend
           IMAGE_TAG: ${{ github.sha }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DATABASE_URL: ${{ secrets.POSTGRES_DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           ACCESS_TOKEN_EXPIRY: ${{ secrets.ACCESS_TOKEN_EXPIRY }}
@@ -56,8 +59,48 @@ jobs:
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
         run: |
           set -eu
+          test -n "$POSTGRES_DB"
+          test -n "$POSTGRES_USER"
+          test -n "$POSTGRES_PASSWORD"
           test -n "$POSTGRES_DATABASE_URL"
           test -n "$JWT_SECRET"
+
+          NETWORK_NAME=vedic-puja-network
+          docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || docker network create "$NETWORK_NAME"
+          docker volume create vedic-puja-db-data >/dev/null
+          docker volume create vedic-puja-uploads >/dev/null
+
+          if docker container inspect vedic-puja-db >/dev/null 2>&1; then
+            docker start vedic-puja-db >/dev/null 2>&1 || true
+            if ! docker inspect vedic-puja-db --format '{{json .NetworkSettings.Networks}}' | grep -q '"vedic-puja-network"'; then
+              docker network connect "$NETWORK_NAME" vedic-puja-db
+            fi
+          else
+            docker run --detach \
+              --name vedic-puja-db \
+              --restart unless-stopped \
+              --network "$NETWORK_NAME" \
+              --volume vedic-puja-db-data:/var/lib/postgresql/data \
+              --env POSTGRES_DB \
+              --env POSTGRES_USER \
+              --env POSTGRES_PASSWORD \
+              postgres:15-alpine
+          fi
+
+          db_ready=false
+          for attempt in $(seq 1 30); do
+            if docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" vedic-puja-db \
+              psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'SELECT 1' >/dev/null 2>&1; then
+              db_ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "$db_ready" != true ]; then
+            docker logs --tail 100 vedic-puja-db
+            exit 1
+          fi
+
           docker pull "$IMAGE_NAME:$IMAGE_TAG"
           docker stop vedic-puja-backend || true
           docker rm vedic-puja-backend || true
@@ -65,6 +108,7 @@ jobs:
           docker run --detach \
             --name vedic-puja-backend \
             --restart unless-stopped \
+            --network "$NETWORK_NAME" \
             --publish 8080:8080 \
             --volume vedic-puja-uploads:/root/uploads \
             --env HOST=0.0.0.0 \
