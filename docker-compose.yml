@@ -1,9 +1,25 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      backend:
+        condition: service_healthy
+
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: vedic-puja-backend
     ports:
       - "8080:8080"
     environment:
@@ -17,8 +33,13 @@ services:
       REFRESH_TOKEN_EXPIRY: ${REFRESH_TOKEN_EXPIRY}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
     volumes:
-      - ./data:/root/data
+      - ./backend/data:/root/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
@@ -29,10 +50,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - vedic-puja-backend
 
   db:
     image: postgres:15-alpine
-    container_name: vedic-puja-db
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -48,4 +72,5 @@ services:
 
 volumes:
   db_data:
+    external: true
     name: vedic-puja-local-db-data

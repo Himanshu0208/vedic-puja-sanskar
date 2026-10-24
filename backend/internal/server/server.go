@@ -62,7 +62,7 @@ func New(cfg config.Config) (*Server, error) {
 	tokenManager := jwt.NewTokenManager(cfg.JWT.Secret)
 
 	// Services
-	authService := service.NewAuthService(userRepo, tokenManager, cfg.JWT.AccessTokenExpiry, cfg.JWT.RefreshTokenExpiry)
+	authService := service.NewAuthService(userRepo, tokenManager, cfg.JWT.AccessTokenExpiry, cfg.JWT.RefreshTokenExpiry, cfg.Email)
 	productService := service.NewProductService(productRepo, categoryRepo)
 	categoryService := service.NewCategoryService(categoryRepo)
 	cartService := service.NewCartService(cartRepo, productRepo)
@@ -72,6 +72,7 @@ func New(cfg config.Config) (*Server, error) {
 	// ✅ Validator (single instance)
 	validate := validator.New()
 	validate.RegisterValidation("strong_password", utils.ValidateStrongPassword)
+	validate.RegisterValidation("india_phone", utils.ValidateIndiaPhone)
 
 	server := &Server{
 		config:          cfg,
@@ -113,6 +114,7 @@ func (s *Server) setupRoutes() http.Handler {
 	// ---------------- PUBLIC ROUTES ----------------
 
 	mux.HandleFunc("/api/v1/auth/signup", authHandler.Signup)
+	mux.HandleFunc("/api/v1/auth/signup/verify", authHandler.VerifySignup)
 	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/v1/auth/refresh", authHandler.RefreshAuthToken)
 
