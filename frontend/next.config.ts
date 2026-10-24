@@ -1,9 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
   reactStrictMode: true,
+  async rewrites() {
+    return [
+      { source: '/api/v1/:path*', destination: 'http://vedic-puja-backend:8080/api/v1/:path*' },
+      { source: '/uploads/:path*', destination: 'http://vedic-puja-backend:8080/uploads/:path*' },
+    ];
+  },
 };
 
 export default nextConfig;
