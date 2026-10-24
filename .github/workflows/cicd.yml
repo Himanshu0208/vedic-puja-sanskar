@@ -58,6 +58,11 @@ jobs:
           REFRESH_TOKEN_EXPIRY: ${{ secrets.REFRESH_TOKEN_EXPIRY }}
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
         run: |
           set -eu
           test -n "$POSTGRES_DB"
@@ -65,6 +70,11 @@ jobs:
           test -n "$POSTGRES_PASSWORD"
           test -n "$POSTGRES_DATABASE_URL"
           test -n "$JWT_SECRET"
+          test -n "$SMTP_HOST"
+          test -n "$SMTP_PORT"
+          test -n "$SMTP_USERNAME"
+          test -n "$SMTP_PASSWORD"
+          test -n "$EMAIL_FROM"
 
           NETWORK_NAME=vedic-puja-network
           docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || docker network create "$NETWORK_NAME"
@@ -122,6 +132,11 @@ jobs:
             --env REFRESH_TOKEN_EXPIRY \
             --env RAZORPAY_KEY_ID \
             --env RAZORPAY_KEY_SECRET \
+            --env SMTP_HOST \
+            --env SMTP_PORT \
+            --env SMTP_USERNAME \
+            --env SMTP_PASSWORD \
+            --env EMAIL_FROM \
             "$IMAGE_NAME:$IMAGE_TAG"
 
           backend_healthy=false

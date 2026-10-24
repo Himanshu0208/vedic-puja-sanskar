@@ -7,6 +7,7 @@ import {
   ArrowRight,
   ChevronDown,
   Heart,
+  LockKeyhole,
   MapPin,
   PackageCheck,
   Pencil,
@@ -100,7 +101,8 @@ export default function ProfilePage() {
     await addressRequest;
     setProfile(p as Profile);
     setName((p as Profile).fullName);
-    setPhone((p as Profile).phone);
+    const savedPhoneDigits = (p as Profile).phone.replace(/\D/g, "");
+    setPhone(savedPhoneDigits.length === 12 && savedPhoneDigits.startsWith("91") ? savedPhoneDigits.slice(2) : savedPhoneDigits.slice(-10));
     setGender((p as Profile).gender || "prefer_not_to_say");
     setOrders(Array.isArray(o) ? o : []);
     const wishedProducts = await Promise.all(
@@ -134,7 +136,7 @@ export default function ProfilePage() {
       setProfile(
         (await authService.updateProfile({
           fullName: name,
-          phone,
+          phone: `+91${phone}`,
           ...(profile?.gender ? {} : { gender }),
         })) as Profile,
       );
@@ -261,22 +263,20 @@ export default function ProfilePage() {
             </label>
             <label className="text-sm font-medium text-stone-700">
               Contact number
-              <input
-                required
-                minLength={8}
-                maxLength={20}
-                className={`${inputClass} mt-1.5`}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
+              <span className="mt-1.5 flex overflow-hidden rounded-xl border border-amber-200 bg-white transition focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-100">
+                <span className="inline-flex shrink-0 items-center gap-1.5 border-r border-amber-100 bg-amber-50/80 px-3 text-sm font-medium text-stone-700"><span aria-hidden="true">🇮🇳</span><span>+91</span></span>
+                <input required type="tel" inputMode="numeric" autoComplete="tel-national" minLength={10} maxLength={10} pattern="[6-9][0-9]{9}" aria-label="10-digit Indian mobile number" className="min-w-0 w-full bg-transparent px-3 py-3 text-sm text-stone-900 outline-none" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} />
+              </span>
             </label>
             <label className="text-sm font-medium text-stone-700">
-              Email address
+              <span className="flex items-center gap-1.5">Email address <LockKeyhole size={13} aria-hidden="true" className="text-stone-400" /></span>
               <input
                 readOnly
+                aria-readonly="true"
                 className={`${inputClass} mt-1.5 bg-stone-50 text-stone-500`}
                 value={profile?.email ?? ""}
               />
+              <span className="mt-1 block text-xs font-normal text-stone-500">Email address can’t be changed here.</span>
             </label>
             <label className="text-sm font-medium text-stone-700">
               Gender

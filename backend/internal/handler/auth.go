@@ -2,12 +2,14 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/repository"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/service"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/jwt"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/pkg/utils"
@@ -47,12 +49,33 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := h.authService.Signup(&req)
+	err := h.authService.Signup(&req)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	utils.WriteJSON(w, http.StatusAccepted, map[string]string{"message": "verification code sent"})
+}
 
+func (h *AuthHandler) VerifySignup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var req dto.VerifySignupRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response, err := h.authService.VerifySignup(&req)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	setAuthCookies(w, r, response)
 	utils.WriteJSON(w, http.StatusCreated, response)
 }
@@ -138,6 +161,10 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	profile, err := h.authService.UpdateProfile(claims.UserID, req)
 	if err != nil {
+		if errors.Is(err, repository.ErrPhoneAlreadyRegistered) {
+			utils.WriteError(w, http.StatusConflict, err.Error())
+			return
+		}
 		utils.WriteError(w, http.StatusInternalServerError, "could not update profile")
 		return
 	}

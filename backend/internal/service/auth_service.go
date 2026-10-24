@@ -1,11 +1,16 @@
 package service
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
+	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/config"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/dto"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/models"
 	"github.com/Himanshu0208/vedic-puja-sanskar/backend/internal/repository"
@@ -19,10 +24,11 @@ type AuthService struct {
 	tokenManager       *jwt.TokenManager
 	acessTokenExpiry   int
 	refreshTokenExpiry int
+	emailConfig        config.EmailConfig
 }
 
 // NewAuthService creates a new authentication service
-func NewAuthService(userRepo *repository.UserRepository, tokenManager *jwt.TokenManager, accessTokenExpiry string, refreshTokenExpiry string) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, tokenManager *jwt.TokenManager, accessTokenExpiry string, refreshTokenExpiry string, emailConfig config.EmailConfig) *AuthService {
 	accessTokenExpiryDuration, err := time.ParseDuration(accessTokenExpiry)
 	if err != nil {
 		panic(fmt.Sprintf("Invalid access token expiry duration: %v", err))
@@ -38,18 +44,24 @@ func NewAuthService(userRepo *repository.UserRepository, tokenManager *jwt.Token
 		tokenManager:       tokenManager,
 		acessTokenExpiry:   int(accessTokenExpiryDuration.Seconds()),
 		refreshTokenExpiry: int(refreshTokenExpiryDuration.Seconds()),
+		emailConfig:        emailConfig,
 	}
 }
 
 // Signup registers a new user
-func (s *AuthService) Signup(req *dto.SignupRequest) (*dto.AuthResponse, error) {
+func (s *AuthService) Signup(req *dto.SignupRequest) error {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	if s.userRepo.UserExists(req.Email) {
-		return nil, errors.New("user with this email already exists")
+		return repository.ErrEmailAlreadyRegistered
+	}
+	req.Phone = strings.TrimSpace(req.Phone)
+	if s.userRepo.PhoneExists(req.Phone, 0) {
+		return repository.ErrPhoneAlreadyRegistered
 	}
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", err)
+		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	user := &models.User{
@@ -63,9 +75,27 @@ func (s *AuthService) Signup(req *dto.SignupRequest) (*dto.AuthResponse, error) 
 		UpdatedAt: time.Now(),
 	}
 
-	savedUser, err := s.userRepo.SaveUser(user)
+	codeNumber, err := rand.Int(rand.Reader, big.NewInt(1000000))
 	if err != nil {
-		return nil, fmt.Errorf("failed to save user: %w", err)
+		return fmt.Errorf("failed to generate verification code: %w", err)
+	}
+	code := fmt.Sprintf("%06d", codeNumber.Int64())
+	codeDigest := sha256.Sum256([]byte(code))
+	if err := s.userRepo.SavePendingSignup(user, hex.EncodeToString(codeDigest[:]), time.Now().Add(10*time.Minute)); err != nil {
+		return fmt.Errorf("failed to start signup: %w", err)
+	}
+	if err := sendSignupCode(s.emailConfig, user.Email, code); err != nil {
+		return fmt.Errorf("could not send verification email: %w", err)
+	}
+	return nil
+}
+
+func (s *AuthService) VerifySignup(req *dto.VerifySignupRequest) (*dto.AuthResponse, error) {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	codeDigest := sha256.Sum256([]byte(req.Code))
+	savedUser, err := s.userRepo.VerifyPendingSignup(req.Email, hex.EncodeToString(codeDigest[:]), time.Now())
+	if err != nil {
+		return nil, err
 	}
 
 	accessToken, err := s.tokenManager.GenerateToken(savedUser.ID, savedUser.Email, string(savedUser.Role), s.acessTokenExpiry)
@@ -102,7 +132,11 @@ func (s *AuthService) GetProfile(userID int) (*dto.ProfileResponse, error) {
 }
 
 func (s *AuthService) UpdateProfile(userID int, req dto.UpdateProfileRequest) (*dto.ProfileResponse, error) {
-	if err := s.userRepo.UpdateProfile(userID, strings.TrimSpace(req.FullName), strings.TrimSpace(req.Phone), req.Gender); err != nil {
+	phone := strings.TrimSpace(req.Phone)
+	if s.userRepo.PhoneExists(phone, userID) {
+		return nil, repository.ErrPhoneAlreadyRegistered
+	}
+	if err := s.userRepo.UpdateProfile(userID, strings.TrimSpace(req.FullName), phone, req.Gender); err != nil {
 		return nil, err
 	}
 	return s.GetProfile(userID)

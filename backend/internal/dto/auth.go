@@ -7,10 +7,15 @@ type LoginRequest struct {
 
 type SignupRequest struct {
 	FullName string `json:"fullName" validate:"required,max=120"`
-	Phone    string `json:"phone" validate:"required,min=8,max=20"`
+	Phone    string `json:"phone" validate:"required,india_phone"`
 	Gender   string `json:"gender" validate:"required,oneof=male female other prefer_not_to_say"`
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,strong_password"`
+}
+
+type VerifySignupRequest struct {
+	Email string `json:"email" validate:"required,email"`
+	Code  string `json:"code" validate:"required,len=6,numeric"`
 }
 
 type ProfileResponse struct {
@@ -24,7 +29,7 @@ type ProfileResponse struct {
 
 type UpdateProfileRequest struct {
 	FullName string `json:"fullName" validate:"required,max=120"`
-	Phone    string `json:"phone" validate:"required,min=8,max=20"`
+	Phone    string `json:"phone" validate:"required,india_phone"`
 	Gender   string `json:"gender" validate:"omitempty,oneof=male female other prefer_not_to_say"`
 }
 

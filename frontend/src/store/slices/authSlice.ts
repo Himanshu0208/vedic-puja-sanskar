@@ -44,11 +44,19 @@ export const signup = createAsyncThunk(
   'auth/signup',
   async (credentials: { fullName: string; phone: string; gender: string; email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await authService.signup(credentials);
-      return response;
+      await authService.signup(credentials);
+      return { message: 'verification code sent' };
     } catch (error: unknown) {
       return rejectWithValue(getErrorMessage(error, 'Signup failed'));
     }
+  }
+);
+
+export const verifySignup = createAsyncThunk(
+  'auth/verifySignup',
+  async (credentials: { email: string; code: string }, { rejectWithValue }) => {
+    try { return await authService.verifySignup(credentials.email, credentials.code); }
+    catch (error: unknown) { return rejectWithValue(getErrorMessage(error, 'Verification failed')); }
   }
 );
 
@@ -104,7 +112,15 @@ const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(signup.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+      .addCase(signup.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(signup.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(verifySignup.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(verifySignup.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.user = {
           id: action.payload.id,
@@ -116,7 +132,7 @@ const authSlice = createSlice({
         // Persist to localStorage
         setStoredItem('userData', state.user);
       })
-      .addCase(signup.rejected, (state, action) => {
+      .addCase(verifySignup.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

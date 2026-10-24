@@ -68,7 +68,7 @@ func (ur *UserRepository) GetUserByID(id int) (*models.User, error) {
 // UserExists checks if a user exists by email
 func (ur *UserRepository) UserExists(email string) bool {
 	var exists bool
-	err := ur.db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", email).Scan(&exists)
+	err := ur.db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(BTRIM(email)) = LOWER(BTRIM($1)))", email).Scan(&exists)
 	if err != nil {
 		return false
 	}
@@ -93,7 +93,7 @@ func (ur *UserRepository) SaveUser(user *models.User) (*models.User, error) {
 	).Scan(&id)
 
 	if err != nil {
-		return nil, err
+		return nil, mapContactUniqueError(err)
 	}
 
 	user.ID = id
@@ -104,7 +104,7 @@ func (ur *UserRepository) SaveUser(user *models.User) (*models.User, error) {
 func (ur *UserRepository) UpdateProfile(userID int, fullName, phone, gender string) error {
 	result, err := ur.db.Exec(`UPDATE users SET full_name=$1, phone=$2, gender=CASE WHEN gender='' THEN $3 ELSE gender END, updated_at=CURRENT_TIMESTAMP WHERE id=$4`, fullName, phone, gender, userID)
 	if err != nil {
-		return err
+		return mapContactUniqueError(err)
 	}
 	count, err := result.RowsAffected()
 	if err != nil {
