@@ -1,0 +1,80 @@
+name: Build and deploy backend
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [staging]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build --tag "vedic-puja-backend:${GITHUB_SHA}" ./backend
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push backend image
+        if: github.event_name == 'push'
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/vedic-puja-sanskar-backend
+        run: |
+          docker tag "vedic-puja-backend:${GITHUB_SHA}" "$IMAGE_NAME:${GITHUB_SHA}"
+          docker tag "vedic-puja-backend:${GITHUB_SHA}" "$IMAGE_NAME:latest"
+          docker push "$IMAGE_NAME:${GITHUB_SHA}"
+          docker push "$IMAGE_NAME:latest"
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Pull and run backend
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/vedic-puja-sanskar-backend
+          IMAGE_TAG: ${{ github.sha }}
+          POSTGRES_DATABASE_URL: ${{ secrets.POSTGRES_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ACCESS_TOKEN_EXPIRY: ${{ secrets.ACCESS_TOKEN_EXPIRY }}
+          REFRESH_TOKEN_EXPIRY: ${{ secrets.REFRESH_TOKEN_EXPIRY }}
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+        run: |
+          set -eu
+          test -n "$POSTGRES_DATABASE_URL"
+          test -n "$JWT_SECRET"
+          docker pull "$IMAGE_NAME:$IMAGE_TAG"
+          docker stop vedic-puja-backend || true
+          docker rm vedic-puja-backend || true
+          docker volume create vedic-puja-uploads
+          docker run --detach \
+            --name vedic-puja-backend \
+            --restart unless-stopped \
+            --publish 8080:8080 \
+            --volume vedic-puja-uploads:/root/uploads \
+            --env HOST=0.0.0.0 \
+            --env PORT=8080 \
+            --env MIGRATIONS_PATH=file:///app/db/migrations \
+            --env IMAGE_STORAGE_PATH=/root/uploads \
+            --env POSTGRES_DATABASE_URL \
+            --env JWT_SECRET \
+            --env ACCESS_TOKEN_EXPIRY \
+            --env REFRESH_TOKEN_EXPIRY \
+            --env RAZORPAY_KEY_ID \
+            --env RAZORPAY_KEY_SECRET \
+            "$IMAGE_NAME:$IMAGE_TAG"

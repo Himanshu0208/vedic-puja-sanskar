@@ -1,6 +1,6 @@
 # Vedic Puja Sanskar - Backend
 
-A production-grade Go backend for the Vedic Puja Sanskar application with JWT-based authentication.
+A production-grade Go backend for the Vedic Puja Sanskar application with JWT-based authentication. Temp
 
 ## Features
 
