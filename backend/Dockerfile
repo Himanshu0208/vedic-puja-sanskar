@@ -25,6 +25,7 @@ WORKDIR /root/
 
 # Copy the binary from builder
 COPY --from=builder /app/server .
+COPY --from=builder /app/db/migrations /app/db/migrations
 
 # Create data directory
 RUN mkdir -p data
