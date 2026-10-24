@@ -1,8 +1,16 @@
 package utils
 
 import (
+	"regexp"
+
 	"github.com/go-playground/validator/v10"
 )
+
+var indiaPhonePattern = regexp.MustCompile(`^\+91[6-9][0-9]{9}$`)
+
+func ValidateIndiaPhone(fl validator.FieldLevel) bool {
+	return indiaPhonePattern.MatchString(fl.Field().String())
+}
 
 func ValidateStrongPassword(fl validator.FieldLevel) bool {
 	password := fl.Field().String()
