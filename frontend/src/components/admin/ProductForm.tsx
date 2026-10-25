@@ -198,12 +198,6 @@ export default function ProductForm({ onClose, product }: ProductFormProps) {
         console.error("Invalid file type:", file.type);
         return;
       }
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size must be less than 5MB");
-        console.error("File size exceeds limit:", file.size);
-        return;
-      }
       setFormData((prev) => ({
         ...prev,
         image: file,
@@ -309,7 +303,7 @@ export default function ProductForm({ onClose, product }: ProductFormProps) {
                       Click to upload an image
                     </p>
                     <p className="mt-1 text-xs text-stone-500">
-                      PNG, JPG, GIF up to 5MB
+                      PNG, JPG or GIF · max 5 MB after lossless optimization
                     </p>
                   </div>
                 )}

@@ -1,8 +1,8 @@
 import axiosInstance, { getErrorMessage } from '@/services/axiosInstance';
 import { CreateProductInput, ProductResponse, UpdateProductInput, DeleteProductResponse, ProductListResponse } from '@/types/product';
-import { AxiosError } from 'axios';
+import { optimizeImage } from '@/utils/optimizeImage';
 
-const buildProductFormData = (productData: CreateProductInput | UpdateProductInput) => {
+const buildProductFormData = async (productData: CreateProductInput | UpdateProductInput) => {
     const formData = new FormData();
 
     if (productData.name !== undefined) {
@@ -36,7 +36,7 @@ const buildProductFormData = (productData: CreateProductInput | UpdateProductInp
         formData.append('image_url', productData.imageURL);
     }
     if (productData.image) {
-        formData.append('image', productData.image);
+        formData.append('image', await optimizeImage(productData.image));
     }
 
     return formData;
@@ -45,7 +45,7 @@ const buildProductFormData = (productData: CreateProductInput | UpdateProductInp
 class ProductService {
     async createProduct(productData: CreateProductInput, token ?: string) {
         try {
-            const response = await axiosInstance.post<ProductResponse>('/products/create', buildProductFormData(productData), {
+            const response = await axiosInstance.post<ProductResponse>('/products/create', await buildProductFormData(productData), {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -60,7 +60,7 @@ class ProductService {
 
     async updateProduct(productId: number, productData: UpdateProductInput, token ?: string) {
         try {
-            const formData = buildProductFormData(productData);
+            const formData = await buildProductFormData(productData);
             formData.append('id', productId.toString());
 
             const response = await axiosInstance.put<ProductResponse>(`/products/update?id=${productId}`, formData, {
