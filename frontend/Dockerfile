@@ -8,6 +8,8 @@ WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_PUBLIC_API_URL=/api/v1
+ARG NEXT_PUBLIC_IMAGE_URL=http://localhost:8081
+ENV NEXT_PUBLIC_IMAGE_URL=${NEXT_PUBLIC_IMAGE_URL}
 RUN npm run build
 
 FROM node:22-alpine AS runner

@@ -34,9 +34,9 @@ jobs:
               - 'docker-compose.yml'
               - '.github/workflows/**'
 
-  build:
+  build-backend:
     needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -45,10 +45,6 @@ jobs:
       - name: Build backend image
         if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
         run: docker build --tag "vedic-puja-backend:${GITHUB_SHA}" ./backend
-
-      - name: Build frontend image
-        if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-        run: docker build --tag "vedic-puja-frontend:${GITHUB_SHA}" ./frontend
 
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch')
@@ -67,19 +63,9 @@ jobs:
           docker push "$IMAGE_NAME:${GITHUB_SHA}"
           docker push "$IMAGE_NAME:latest"
 
-      - name: Push frontend image
-        if: github.event_name != 'pull_request' && (needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch')
-        env:
-          IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/vedic-puja-sanskar-frontend
-        run: |
-          docker tag "vedic-puja-frontend:${GITHUB_SHA}" "$IMAGE_NAME:${GITHUB_SHA}"
-          docker tag "vedic-puja-frontend:${GITHUB_SHA}" "$IMAGE_NAME:latest"
-          docker push "$IMAGE_NAME:${GITHUB_SHA}"
-          docker push "$IMAGE_NAME:latest"
-
   deploy-backend:
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/staging' && (needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch')
-    needs: [changes, build]
+    needs: [changes, build-backend]
     runs-on: self-hosted
     steps:
       - name: Log in to Docker Hub
@@ -198,9 +184,37 @@ jobs:
             exit 1
           fi
 
+  build-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build frontend image
+        run: docker build --tag "vedic-puja-frontend:${GITHUB_SHA}" ./frontend
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push frontend image
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/vedic-puja-sanskar-frontend
+        run: |
+          docker tag "vedic-puja-frontend:${GITHUB_SHA}" "$IMAGE_NAME:${GITHUB_SHA}"
+          docker tag "vedic-puja-frontend:${GITHUB_SHA}" "$IMAGE_NAME:latest"
+          docker push "$IMAGE_NAME:${GITHUB_SHA}"
+          docker push "$IMAGE_NAME:latest"
+
   deploy-frontend:
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/staging' && (needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch')
-    needs: [changes, build]
+    needs: [changes, build-frontend]
     runs-on: self-hosted
     steps:
       - name: Log in to Docker Hub

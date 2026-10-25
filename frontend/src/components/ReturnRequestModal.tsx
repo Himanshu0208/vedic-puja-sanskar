@@ -101,6 +101,7 @@ export default function ReturnRequestModal({ orderId, onClose, onSuccess }: Prop
               <Upload size={16} />
               Click to upload images or videos
             </button>
+            <p className="mt-2 text-xs text-stone-500">Images are losslessly optimized and must be 1 MB or smaller. Videos are unchanged.</p>
             <input
               ref={inputRef}
               type="file"

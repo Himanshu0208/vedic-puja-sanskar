@@ -1,4 +1,5 @@
 import axiosInstance, { getErrorMessage } from "../axiosInstance";
+import { optimizeImage } from '@/utils/optimizeImage';
 import { AddItemToCartRequest, CartResponse, CreateOrderRequest, CreateOrderResponse, RemoveItemFromRequest, SavedAddress, UserOrderPage, VerifyPaymentRequest, VerifyPaymentResponse } from "@/types/order";
 
 class OrderService {
@@ -39,7 +40,7 @@ class OrderService {
     const form = new FormData();
     form.append('reason', reason);
     form.append('description', description);
-    files.forEach(f => form.append('media', f));
+    for (const file of files) form.append('media', await optimizeImage(file));
     await axiosInstance.post(`/orders/${orderId}/return`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
