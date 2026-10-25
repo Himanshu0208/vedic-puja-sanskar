@@ -110,6 +110,17 @@ jobs:
           docker volume create vedic-puja-db-data >/dev/null
           docker volume create vedic-puja-uploads >/dev/null
 
+          docker pull nginx:alpine
+          docker stop vedic-puja-uploads || true
+          docker rm vedic-puja-uploads || true
+          docker run --detach \
+            --name vedic-puja-uploads \
+            --restart unless-stopped \
+            --network "$NETWORK_NAME" \
+            --network-alias uploads \
+            --volume vedic-puja-uploads:/usr/share/nginx/html/uploads:ro \
+            nginx:alpine
+
           if docker container inspect vedic-puja-db >/dev/null 2>&1; then
             docker start vedic-puja-db >/dev/null 2>&1 || true
             if ! docker inspect vedic-puja-db --format '{{json .NetworkSettings.Networks}}' | grep -q '"vedic-puja-network"'; then
