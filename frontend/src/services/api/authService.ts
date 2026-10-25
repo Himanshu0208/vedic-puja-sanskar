@@ -42,6 +42,14 @@ class AuthService {
     }
   }
 
+  async forgotPassword(email: string): Promise<void> {
+    await axiosInstance.post('/auth/password/forgot', { email });
+  }
+
+  async resetPassword(email: string, code: string, password: string): Promise<void> {
+    await axiosInstance.post('/auth/password/reset', { email, code, password });
+  }
+
   async getProfile() {
     try {
       const response = await axiosInstance.get('/auth/profile');

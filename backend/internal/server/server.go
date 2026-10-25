@@ -116,6 +116,8 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.HandleFunc("/api/v1/auth/signup", authHandler.Signup)
 	mux.HandleFunc("/api/v1/auth/signup/verify", authHandler.VerifySignup)
 	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
+	mux.HandleFunc("/api/v1/auth/password/forgot", authHandler.ForgotPassword)
+	mux.HandleFunc("/api/v1/auth/password/reset", authHandler.ResetPassword)
 	mux.HandleFunc("/api/v1/auth/refresh", authHandler.RefreshAuthToken)
 
 	mux.HandleFunc("/api/v1/categories", categoryHandler.GetAllCategories)

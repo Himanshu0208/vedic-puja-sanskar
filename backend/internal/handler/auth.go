@@ -109,6 +109,45 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, response)
 }
 
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var req dto.ForgotPasswordRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	_ = h.authService.ForgotPassword(req.Email)
+	utils.WriteJSON(w, http.StatusAccepted, map[string]string{"message": "If an account exists for that email, a reset code has been sent."})
+}
+
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var req dto.ResetPasswordRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := h.authService.ResetPassword(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"message": "password reset successfully"})
+}
+
 func setAuthCookies(w http.ResponseWriter, r *http.Request, response *dto.AuthResponse) {
 	secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 	http.SetCookie(w, &http.Cookie{Name: "access_token", Value: response.AccessToken, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: response.AccessTokenExpiresIn})

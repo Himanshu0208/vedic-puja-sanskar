@@ -226,3 +226,53 @@ func (ur *UserRepository) DeleteRefreshTokenByUserID(userID int) error {
 	)
 	return err
 }
+
+func (ur *UserRepository) SavePasswordReset(email, codeHash string, expiresAt time.Time) error {
+	result, err := ur.db.Exec(`INSERT INTO password_resets (email, code_hash, expires_at, attempts)
+		VALUES ($1,$2,$3,0) ON CONFLICT (email) DO UPDATE SET code_hash=$2, expires_at=$3, attempts=0, created_at=CURRENT_TIMESTAMP
+		WHERE password_resets.created_at < CURRENT_TIMESTAMP - INTERVAL '1 minute'`, email, codeHash, expiresAt)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("a reset code was recently sent; wait a minute before requesting another")
+	}
+	return nil
+}
+
+func (ur *UserRepository) ResetPassword(email, codeHash, passwordHash string, now time.Time) error {
+	tx, err := ur.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var savedHash string
+	var expiresAt time.Time
+	var attempts int
+	err = tx.QueryRow(`SELECT code_hash, expires_at, attempts FROM password_resets WHERE email=$1 FOR UPDATE`, email).Scan(&savedHash, &expiresAt, &attempts)
+	if err != nil || savedHash != codeHash || !now.Before(expiresAt) || attempts >= 5 {
+		if err == nil && attempts < 5 {
+			if _, updateErr := tx.Exec(`UPDATE password_resets SET attempts=attempts+1 WHERE email=$1`, email); updateErr != nil {
+				return updateErr
+			}
+			if commitErr := tx.Commit(); commitErr != nil {
+				return commitErr
+			}
+		}
+		return fmt.Errorf("invalid or expired reset code")
+	}
+	if _, err = tx.Exec(`UPDATE users SET password=$1, updated_at=CURRENT_TIMESTAMP WHERE LOWER(BTRIM(email))=LOWER(BTRIM($2))`, passwordHash, email); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`DELETE FROM password_resets WHERE email=$1`, email); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`DELETE FROM refresh_tokens WHERE user_id=(SELECT id FROM users WHERE LOWER(BTRIM(email))=LOWER(BTRIM($1)))`, email); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
