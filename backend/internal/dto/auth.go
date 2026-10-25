@@ -18,6 +18,15 @@ type VerifySignupRequest struct {
 	Code  string `json:"code" validate:"required,len=6,numeric"`
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+type ResetPasswordRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Code     string `json:"code" validate:"required,len=6,numeric"`
+	Password string `json:"password" validate:"required,strong_password"`
+}
+
 type ProfileResponse struct {
 	ID       int    `json:"id"`
 	FullName string `json:"fullName"`

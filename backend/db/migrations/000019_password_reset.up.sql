@@ -1,0 +1,7 @@
+CREATE TABLE password_resets (
+    email VARCHAR(255) PRIMARY KEY,
+    code_hash CHAR(64) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    attempts SMALLINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
