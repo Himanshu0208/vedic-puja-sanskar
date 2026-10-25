@@ -123,6 +123,37 @@ func (s *AuthService) VerifySignup(req *dto.VerifySignupRequest) (*dto.AuthRespo
 	}, nil
 }
 
+func (s *AuthService) ForgotPassword(email string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return nil
+	}
+	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil {
+		return err
+	}
+	code := fmt.Sprintf("%06d", n.Int64())
+	digest := sha256.Sum256([]byte(code))
+	if err := s.userRepo.SavePasswordReset(email, hex.EncodeToString(digest[:]), time.Now().Add(10*time.Minute)); err != nil {
+		return err
+	}
+	if err := sendPasswordResetCode(s.emailConfig, user.Email, code); err != nil {
+		return fmt.Errorf("could not send password reset email: %w", err)
+	}
+	return nil
+}
+
+func (s *AuthService) ResetPassword(req *dto.ResetPasswordRequest) error {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	digest := sha256.Sum256([]byte(req.Code))
+	hash, err := utils.HashPassword(req.Password)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+	return s.userRepo.ResetPassword(req.Email, hex.EncodeToString(digest[:]), hash, time.Now())
+}
+
 func (s *AuthService) GetProfile(userID int) (*dto.ProfileResponse, error) {
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
